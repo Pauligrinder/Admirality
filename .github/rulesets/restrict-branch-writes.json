@@ -1,0 +1,27 @@
+{
+  "name": "Restrict branch writes",
+  "target": "branch",
+  "source_type": "Repository",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~ALL"],
+      "exclude": ["~DEFAULT_BRANCH"]
+    }
+  },
+  "bypass_actors": [
+    {
+      "actor_type": "User",
+      "actor_id": 5802137,
+      "bypass_mode": "always"
+    }
+  ],
+  "rules": [
+    {
+      "type": "creation"
+    },
+    {
+      "type": "update"
+    }
+  ]
+}

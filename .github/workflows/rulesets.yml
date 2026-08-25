@@ -1,0 +1,35 @@
+name: Apply Rulesets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/rulesets/**
+      - scripts/apply-github-rulesets.sh
+  workflow_dispatch:
+
+concurrency:
+  group: rulesets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply repository rulesets
+        env:
+          # GITHUB_TOKEN cannot manage rulesets; optional fine-grained PAT with
+          # Administration read/write (Settings → Secrets → RULESET_ADMIN_TOKEN).
+          GH_TOKEN: ${{ secrets.RULESET_ADMIN_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::warning::RULESET_ADMIN_TOKEN is not set — skipping ruleset sync."
+            echo "Apply manually: ./scripts/apply-github-rulesets.sh"
+            exit 0
+          fi
+          chmod +x scripts/apply-github-rulesets.sh
+          ./scripts/apply-github-rulesets.sh

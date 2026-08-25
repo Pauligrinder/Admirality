@@ -8,17 +8,21 @@ Source0:    %{name}-%{version}.tar.bz2
 Requires:   sailfishsilica-qt5 >= 0.10.9
 Requires:   qt5-qtcore
 Requires:   qt5-qtdeclarative
+Requires:   qt5-qtnetwork
 Requires:   sailfish-components-webview-qt5
+Requires:   nemo-qml-plugin-notifications-qt5
 BuildRequires:  pkgconfig(sailfishapp) >= 1.0.2
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
+BuildRequires:  pkgconfig(Qt5Network)
 BuildRequires:  pkgconfig(qt5embedwidget)
 BuildRequires:  desktop-file-utils
 
 %description
-Sailfish wrapper for Wilma / Inschool.fi. Enter your school's Wilma
-address and use the service in a Silica WebView.
+Sailfish wrapper for Wilma / Inschool.fi. Native city/school picker,
+Wilma login, and message notifications; the rest of Wilma opens in a
+Silica WebView.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -44,4 +48,4 @@ desktop-file-install --delete-original \
 
 %changelog
 * Wed Aug 26 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.1.0-1
-- Initial packaging: WebView wrapper for Wilma / Inschool.fi.
+- Native Wilma picker, login, MFA, and message notifications.

@@ -4,18 +4,29 @@ A Silica Harbour wrapper (`harbour-admirality`) for [Wilma / Inschool.fi](https:
 Built with Qt 5 / QML + C++ the same way most SFOS apps are, and tested against
 Platform SDK target `SailfishOS-5.2.0.15-aarch64`.
 
-Enter your school's Wilma address (for example `espoo` or `https://espoo.inschool.fi`)
-and the app opens it in a WebView. Session cookies stay in the app profile.
-Choosing a school from inschool.fi stores that Wilma address for the next launch.
+The city/Wilma picker, login, and notifications are native. After sign-in the
+Wilma site opens in a WebView. Login and the school list follow the same
+unofficial Wilma flow used by [wilmai](https://github.com/aikarjal/wilmai)
+and [OpenWilma](https://github.com/OpenWilma/openwilma.js):
 
-Cover actions reload the page and open settings.
+1. **Choose Wilma** — searchable list of Finnish Wilma tenants (bundled from
+   wilmai's public directory), or a custom address.
+2. **Sign in** — username and password against that tenant. TOTP is supported
+   when Wilma asks for it.
+3. **Notifications** — unread inbox messages are polled every few minutes and
+   shown as Sailfish notifications while the app is running.
+
+Credentials stay in the app's local settings so the session can be restored.
+
+Cover actions reload Wilma and open settings.
 
 ## Layout
 
 ```
 app/
   harbour-admirality.pro
-  src/harbour-admirality.cpp
+  src/wilmaclient.{h,cpp}
+  data/tenant_list.json
   qml/pages/
   rpm/harbour-admirality.spec
 ```
@@ -38,7 +49,7 @@ ssh defaultuser@<phone-ip>
 devel-su pkcon install-local ~/harbour-admirality-0.1.0-1.aarch64.rpm
 ```
 
-Sailjail permissions used: `Internet`.
+Sailjail permissions used: `Internet`, `Notifications`.
 
 ## Releases (GitHub Actions)
 

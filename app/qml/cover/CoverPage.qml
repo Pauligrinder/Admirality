@@ -6,6 +6,11 @@ CoverBackground {
     property string schoolName: ""
     property string schoolHost: ""
     property bool configured: false
+    property bool loggedIn: false
+    property int unreadCount: 0
+    property string notificationTitle: ""
+    property string notificationBody: ""
+    property bool showingNotification: false
     signal requestSettings
     signal requestReload
 
@@ -108,9 +113,33 @@ CoverBackground {
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
+            maximumLineCount: 3
+            elide: Text.ElideRight
+            color: "#F2FFFFFF"
+            font.pixelSize: Theme.fontSizeTiny
+            visible: cover.showingNotification && cover.notificationBody.length > 0
+            text: cover.notificationBody
+        }
+
+        Label {
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
             color: "#CCFFFFFF"
             font.pixelSize: Theme.fontSizeExtraSmall
-            text: cover.configured ? qsTr("Wilma") : qsTr("Not configured")
+            text: {
+                if (cover.showingNotification && cover.notificationTitle.length > 0)
+                    return cover.notificationTitle
+                if (!cover.configured)
+                    return qsTr("Not configured")
+                if (!cover.loggedIn)
+                    return qsTr("Not signed in")
+                if (cover.unreadCount === 1)
+                    return qsTr("1 unread message")
+                if (cover.unreadCount > 1)
+                    return qsTr("%1 unread messages").arg(cover.unreadCount)
+                return qsTr("Wilma")
+            }
         }
 
         Label {

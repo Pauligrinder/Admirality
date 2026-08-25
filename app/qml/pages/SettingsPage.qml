@@ -6,14 +6,6 @@ Page {
     objectName: "SettingsPage"
     allowedOrientations: Orientation.All
 
-    function applyAndOpen() {
-        var url = appWindow.normalizeWilmaUrl(urlField.text)
-        if (!url.length)
-            return
-        appWindow.setWilmaUrl(url)
-        pageStack.replaceAbove(null, Qt.resolvedUrl("WilmaPage.qml"))
-    }
-
     SilicaFlickable {
         anchors.fill: parent
         contentHeight: column.height + Theme.paddingLarge
@@ -34,21 +26,15 @@ Page {
                 wrapMode: Text.Wrap
                 color: Theme.secondaryColor
                 font.pixelSize: Theme.fontSizeSmall
-                text: qsTr("Admirality wraps Wilma / Inschool.fi in a Sailfish WebView. "
-                           + "Enter your school's Wilma address. A short name such as "
-                           + "“espoo” becomes https://espoo.inschool.fi.")
-            }
-
-            TextField {
-                id: urlField
-                width: parent.width
-                label: qsTr("Wilma address")
-                placeholderText: "espoo.inschool.fi"
-                text: appWindow.wilmaUrl
-                inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase | Qt.ImhUrlCharactersOnly
-                EnterKey.enabled: text.trim().length > 0
-                EnterKey.iconSource: "image://theme/icon-m-enter-accept"
-                EnterKey.onClicked: page.applyAndOpen()
+                text: wilmaClient.hasSchool
+                      ? qsTr("Signed in to %1 as %2.")
+                        .arg(wilmaClient.schoolName.length > 0
+                             ? wilmaClient.schoolName
+                             : wilmaClient.schoolHost)
+                        .arg(wilmaClient.displayName.length > 0
+                             ? wilmaClient.displayName
+                             : wilmaClient.username)
+                      : qsTr("No Wilma selected.")
             }
 
             Label {
@@ -58,35 +44,29 @@ Page {
                 wrapMode: Text.Wrap
                 color: Theme.secondaryHighlightColor
                 font.pixelSize: Theme.fontSizeExtraSmall
-                visible: urlField.text.trim().length > 0
-                text: qsTr("Will open %1").arg(appWindow.normalizeWilmaUrl(urlField.text))
+                visible: wilmaClient.loggedIn
+                text: wilmaClient.unreadCount === 1
+                      ? qsTr("1 unread message")
+                      : qsTr("%1 unread messages").arg(wilmaClient.unreadCount)
             }
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Open Wilma")
-                enabled: urlField.text.trim().length > 0
-                onClicked: page.applyAndOpen()
-            }
-
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Find school on inschool.fi")
+                text: qsTr("Change Wilma")
                 onClicked: {
-                    appWindow.setWilmaUrl("https://inschool.fi")
-                    pageStack.replaceAbove(null, Qt.resolvedUrl("WilmaPage.qml"))
+                    wilmaClient.logout()
+                    pageStack.replaceAbove(null, Qt.resolvedUrl("SchoolPickerPage.qml"))
                 }
             }
 
-            Label {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Theme.horizontalPageMargin
-                wrapMode: Text.Wrap
-                color: Theme.secondaryColor
-                font.pixelSize: Theme.fontSizeExtraSmall
-                text: qsTr("When you open a school from inschool.fi, Admirality stores that "
-                           + "Wilma address for the next launch.")
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Sign out")
+                enabled: wilmaClient.hasCredentials || wilmaClient.loggedIn
+                onClicked: {
+                    wilmaClient.logout()
+                    pageStack.replaceAbove(null, Qt.resolvedUrl("LoginPage.qml"))
+                }
             }
 
             Label {

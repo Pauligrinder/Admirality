@@ -84,10 +84,6 @@ ApplicationWindow
         appSettings.wilmaUrl = origin
     }
 
-    function openWilma() {
-        pageStack.replaceAbove(null, Qt.resolvedUrl("pages/WilmaPage.qml"))
-    }
-
     function openSettings() {
         if (pageStack.currentPage && pageStack.currentPage.objectName === "SettingsPage")
             return

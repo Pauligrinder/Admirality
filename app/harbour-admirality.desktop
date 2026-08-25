@@ -9,6 +9,6 @@ Comment=Wilma / Inschool.fi wrapper
 Comment[en]=Wilma / Inschool.fi wrapper
 
 [X-Sailjail]
-Permissions=Internet
+Permissions=Internet;
 OrganizationName=org.admirality
 ApplicationName=harbour-admirality

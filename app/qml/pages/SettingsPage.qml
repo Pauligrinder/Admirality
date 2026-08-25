@@ -36,7 +36,7 @@ Page {
                 font.pixelSize: Theme.fontSizeSmall
                 text: qsTr("Admirality wraps Wilma / Inschool.fi in a Sailfish WebView. "
                            + "Enter your school's Wilma address. A short name such as "
-                           + "“espoo” becomes https://espoo.inschool.fi.")
+                           + "'espoo' becomes https://espoo.inschool.fi.")
             }
 
             TextField {

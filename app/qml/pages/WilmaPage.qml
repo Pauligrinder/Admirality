@@ -30,7 +30,7 @@ WebViewPage {
     Rectangle {
         id: loadingOverlay
         anchors.fill: parent
-        color: Theme.overlayBackgroundColor
+        color: Theme.highlightDimmerColor
         visible: !page.pageLoaded
         z: 2
 

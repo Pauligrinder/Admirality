@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>data/tenant_list.json</file>
+    </qresource>
+</RCC>

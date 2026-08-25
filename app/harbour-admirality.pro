@@ -1,14 +1,20 @@
 TARGET = harbour-admirality
 
 CONFIG += sailfishapp
-QT += gui
+QT += gui network
 PKGCONFIG += qt5embedwidget
 
 VERSION = 0.1.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 SOURCES += \
-    src/harbour-admirality.cpp
+    src/harbour-admirality.cpp \
+    src/wilmaclient.cpp
+
+HEADERS += \
+    src/wilmaclient.h
+
+RESOURCES += admirality.qrc
 
 DISTFILES += \
     rpm/harbour-admirality.spec \

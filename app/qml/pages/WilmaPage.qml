@@ -8,23 +8,55 @@ WebViewPage {
     backNavigation: false
     allowedOrientations: Orientation.All
 
-    property string startUrl: appWindow.wilmaUrl
     property bool pageLoaded: false
+    property bool loginInjected: false
+
+    function jsString(value) {
+        return JSON.stringify(value ? String(value) : "")
+    }
 
     function reloadWilma() {
         page.pageLoaded = false
+        page.loginInjected = false
         wilmaView.reload()
+    }
+
+    function injectNativeLogin() {
+        if (page.loginInjected || !wilmaClient.hasCredentials)
+            return
+        var script = "return (function(){"
+                + "var u=document.querySelector('input[name=Login]');"
+                + "var p=document.querySelector('input[name=Password]');"
+                + "var f=u&&u.form?u.form:document.querySelector('form');"
+                + "if(!u||!p||!f)return 'no-form';"
+                + "u.value=" + page.jsString(wilmaClient.username) + ";"
+                + "p.value=" + page.jsString(wilmaClient.password) + ";"
+                + "if(typeof f.submit==='function')f.submit();"
+                + "return 'submitted';"
+                + "})();"
+        wilmaView.runJavaScript(script, function(result) {
+            if (result === "submitted")
+                page.loginInjected = true
+        })
     }
 
     WebView {
         id: wilmaView
         anchors.fill: parent
-        url: page.startUrl
+        url: wilmaClient.schoolUrl
         onLoadedChanged: {
-            if (loaded)
-                page.pageLoaded = true
+            if (!loaded)
+                return
+            page.pageLoaded = true
+            var value = String(url)
+            if (value.indexOf("/login") >= 0 || value.indexOf("loginfailed") >= 0)
+                page.injectNativeLogin()
         }
-        onUrlChanged: appWindow.rememberWilmaUrlFromNavigation(String(url))
+        onUrlChanged: {
+            var value = String(url)
+            if (value.indexOf("/login") >= 0 || value.indexOf("loginfailed") >= 0)
+                page.injectNativeLogin()
+        }
     }
 
     Rectangle {

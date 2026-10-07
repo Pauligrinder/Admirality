@@ -1,14 +1,13 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
 import Nemo.DBus 2.0
-import org.nemomobile.lipstick 0.1
 
 Item {
     id: root
 
     width: parent ? parent.width : Screen.width
     implicitWidth: width
-    implicitHeight: column.height
+    implicitHeight: Math.max(column.height, Theme.itemSizeMedium)
     height: implicitHeight
 
     property bool active: visible && eventsViewVisible
@@ -29,47 +28,9 @@ Item {
         { "icon": "image://theme/icon-m-calendar", "count": root.exams, "view": "exams" }
     ]
 
-    function findApp(model, depth) {
-        if (!model || depth > 4 || typeof model.get !== "function")
-            return null
-        var n = model.count || 0
-        for (var i = 0; i < n; ++i) {
-            var item = model.get(i)
-            if (!item)
-                continue
-            if (String(item.filePath || "").indexOf("harbour-admirality.desktop") >= 0)
-                return item
-            if (item.type === LauncherModel.Folder) {
-                var nested = root.findApp(item, depth + 1)
-                if (!nested && item.model)
-                    nested = root.findApp(item.model, depth + 1)
-                if (nested)
-                    return nested
-            }
-        }
-        return null
-    }
-
-    function launchApp() {
-        var item = root.findApp(launcherModel, 0)
-        if (!item)
-            return
-        var raised = false
-        try {
-            if (Desktop && Desktop.instance && Desktop.instance.switcher) {
-                Desktop.instance.switcher.activateWindowFor(item)
-                raised = true
-            }
-        } catch (e) {
-            raised = false
-        }
-        if (!raised)
-            item.launchApplication()
-    }
-
     function openCount(view) {
+        // Daemon stores the target page and starts/raises the UI.
         wilma.call("OpenView", [view])
-        root.launchApp()
     }
 
     function applyPayload(payload) {
@@ -116,17 +77,12 @@ Item {
         onTriggered: root.fetchState()
     }
 
-    LauncherModel {
-        id: launcherModel
-    }
-
     DBusInterface {
         id: wilma
         service: "org.admirality.harbour-admirality"
         path: "/wilma"
         iface: "org.admirality.Wilma"
         signalsEnabled: root.active
-        // Nemo.DBus maps StateChanged to a lowercase-initial handler, same as Helmsman.
         function stateChanged() {
             root.fetchState()
         }

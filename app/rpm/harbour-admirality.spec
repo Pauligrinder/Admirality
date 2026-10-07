@@ -1,6 +1,6 @@
 Name:       harbour-admirality
 Summary:    Admirality — Wilma / Inschool.fi for Sailfish OS
-Version:    0.2.1
+Version:    0.2.2
 Release:    1
 License:    ASL 2.0
 URL:        https://github.com/Pauligrinder/Admirality
@@ -51,7 +51,7 @@ ln -sf ../%{name}.service %{buildroot}/usr/lib/systemd/user/user-session.target.
 
 %post
 if [ -S /run/user/100000/dbus/user_bus_socket ]; then
-    su -s /bin/sh defaultuser -c 'export XDG_RUNTIME_DIR=/run/user/100000; export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/100000/dbus/user_bus_socket; /usr/bin/systemctl --user daemon-reload; /usr/bin/systemctl --user enable --now harbour-admirality.service' || true
+    su -s /bin/sh defaultuser -c 'export XDG_RUNTIME_DIR=/run/user/100000; export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/100000/dbus/user_bus_socket; /usr/bin/systemctl --user daemon-reload; /usr/bin/systemctl --user enable harbour-admirality.service; /usr/bin/systemctl --user restart harbour-admirality.service' || true
 fi
 
 %preun
@@ -73,6 +73,10 @@ fi
 %config %{_sysconfdir}/sailjail/permissions/AdmiralityDBus.permission
 
 %changelog
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.2-1
+- Launch the UI from the daemon when an Events view icon is tapped.
+- Restart the Wilma service on upgrade so new D-Bus methods are live.
+- Simplify the schedule widget so lipstick can measure and show it.
 * Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.1-1
 - Keep the schedule Events view widget from collapsing to zero height.
 - Add a Wilma heading on the info card and open the matching page on tap.

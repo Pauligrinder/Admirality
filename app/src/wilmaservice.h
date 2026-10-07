@@ -106,6 +106,7 @@ private slots:
 
 private:
     void postNotification(const QString &title, const QString &body);
+    void launchUi();
     QString stateJson() const;
     bool registerService();
 

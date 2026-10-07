@@ -9,6 +9,8 @@ ApplicationWindow
     property int notificationCount: 0
     property string coverNotificationTitle: ""
     property string coverNotificationBody: ""
+    property string pendingOpenView: ""
+    property int openViewTries: 0
 
     function isAuthedPage(name) {
         return name === "MainPage"
@@ -34,17 +36,10 @@ ApplicationWindow
         pageStack.replaceAbove(null, Qt.resolvedUrl("pages/LoginPage.qml"))
     }
 
-    function openWilmaView(view) {
-        appWindow.activate()
-        if (!wilmaClient.loggedIn)
-            return
+    function applyOpenView(view) {
         var page = pageStack.currentPage
-        if (!page || page.objectName !== "MainPage") {
-            pageStack.replaceAbove(null, Qt.resolvedUrl("pages/MainPage.qml"))
-            page = pageStack.currentPage
-        }
-        if (!page)
-            return
+        if (!page || page.objectName !== "MainPage")
+            return false
         if (view === "messages" && typeof page.showTab === "function")
             page.showTab(1)
         else if (view === "notes" && typeof page.showTab === "function")
@@ -54,6 +49,27 @@ ApplicationWindow
         else if ((view === "grades" || view === "homework" || view === "exams")
                  && typeof page.showHomeSection === "function")
             page.showHomeSection(view)
+        else
+            return false
+        appWindow.pendingOpenView = ""
+        wilmaClient.clearOpenView()
+        return true
+    }
+
+    function openWilmaView(view) {
+        appWindow.pendingOpenView = view || ""
+        appWindow.openViewTries = 0
+        appWindow.activate()
+        if (!appWindow.pendingOpenView.length || !wilmaClient.loggedIn)
+            return
+        var page = pageStack.currentPage
+        if (!page || page.objectName !== "MainPage") {
+            pageStack.replaceAbove(null, Qt.resolvedUrl("pages/MainPage.qml"))
+            openViewRetry.restart()
+            return
+        }
+        if (!appWindow.applyOpenView(appWindow.pendingOpenView))
+            openViewRetry.restart()
     }
 
     function openSettings() {
@@ -86,11 +102,25 @@ ApplicationWindow
                     && pageStack.currentPage
                     && appWindow.isAuthedPage(pageStack.currentPage.objectName))
                 appWindow.goLogin()
+            else if (wilmaClient.loggedIn && appWindow.pendingOpenView.length)
+                appWindow.openWilmaView(appWindow.pendingOpenView)
         }
         onNotificationReceived: appWindow.showWilmaNotification(title, message)
-        onOpenViewRequested: {
-            appWindow.openWilmaView(view)
-            wilmaClient.clearOpenView()
+        onOpenViewRequested: appWindow.openWilmaView(view)
+    }
+
+    Timer {
+        id: openViewRetry
+        interval: 150
+        repeat: false
+        onTriggered: {
+            if (!appWindow.pendingOpenView.length || !wilmaClient.loggedIn)
+                return
+            appWindow.openViewTries += 1
+            if (appWindow.applyOpenView(appWindow.pendingOpenView))
+                return
+            if (appWindow.openViewTries < 20)
+                openViewRetry.restart()
         }
     }
 

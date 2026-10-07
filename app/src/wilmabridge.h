@@ -1,29 +1,21 @@
-#ifndef WILMACLIENT_H
-#define WILMACLIENT_H
+#ifndef WILMABRIDGE_H
+#define WILMABRIDGE_H
 
 #include <QObject>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QJsonDocument>
-#include <QMap>
 #include <QString>
 #include <QVariantList>
 #include <QVariantMap>
-#include <QHash>
-#include <QSet>
-#include <QTimer>
-#include <QUrl>
-#include <QUrlQuery>
+#include <QDBusConnection>
 
-class QNetworkAccessManager;
-class QNetworkReply;
-class QNetworkRequest;
-class QNetworkCookieJar;
+class QTimer;
 
-class WilmaClient : public QObject
+// App-side view of the Wilma loader. The daemon owns the network session;
+// this object keeps the same properties the QML pages already use.
+class WilmaBridge : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+    Q_PROPERTY(bool serviceReady READ serviceReady NOTIFY serviceReadyChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(bool loggedIn READ loggedIn NOTIFY loggedInChanged)
     Q_PROPERTY(bool restoringSession READ restoringSession NOTIFY restoringSessionChanged)
@@ -66,10 +58,10 @@ class WilmaClient : public QObject
     Q_PROPERTY(int freshExamCount READ freshExamCount NOTIFY freshCountsChanged)
 
 public:
-    explicit WilmaClient(QObject *parent = nullptr);
-    ~WilmaClient() override;
+    explicit WilmaBridge(QObject *parent = nullptr);
 
     QString appVersion() const;
+    bool serviceReady() const;
     bool busy() const;
     bool loggedIn() const;
     bool restoringSession() const;
@@ -135,6 +127,7 @@ public slots:
     void acknowledgeExams();
 
 signals:
+    void serviceReadyChanged();
     void busyChanged();
     void loggedInChanged();
     void restoringSessionChanged();
@@ -176,125 +169,62 @@ signals:
                               const QVariantMap &data);
 
 private slots:
-    void onReplyFinished();
+    void tryConnect();
+    void onStateChanged();
 
 private:
-    enum RequestKind {
-        RequestNone,
-        RequestIndexJson,
-        RequestLoginJson,
-        RequestToken,
-        RequestLoginHtml,
-        RequestLoginPage,
-        RequestPostLogin,
-        RequestMfa,
-        RequestAccount,
-        RequestRoles,
-        RequestHomeHtml,
-        RequestMessages,
-        RequestOverview,
-        RequestNewsList,
-        RequestNewsItem,
-        RequestMessageItem,
-        RequestAttendance
-    };
+    void invoke(const QString &method, const QVariantList &args = QVariantList());
+    void applyState(const QString &json);
+    void setServiceReady(bool ready);
 
-    void setBusy(bool busy);
-    void setLoggedIn(bool loggedIn);
-    void setError(const QString &message);
-    void setStatus(const QString &text);
-    void setNeedsOtp(bool needsOtp);
-    void clearError();
-    void saveSettings();
-    void loadSettings();
-    void applySessionCookie();
-    void ensureLoginCookie(const QString &sessionId);
-    void ingestReplyCookies(QNetworkReply *reply);
-    QString sessionCookie() const;
-    QString loginCookie() const;
-    QString cookieValueFromReply(QNetworkReply *reply, const QByteArray &name) const;
-    QByteArray cookieHeader() const;
-    void applyRequestCookies(QNetworkRequest *request) const;
-    void startLogin();
-    void postIndexJson(const QString &sessionId);
-    void postHtmlLogin(const QString &sessionId);
-    void fetchLoginPageForFields();
-    void tryIndexJsonLogin();
-    void retryLogin(const QString &reason, bool wrongPassword);
-    void completeLogin(bool fetchMessages = true);
-    void handleLoginBody(QNetworkReply *reply,
-                         const QByteArray &body,
-                         const QUrl &url,
-                         const QUrl &redirectUrl);
-    void continueAfterLoginRedirect(const QUrl &redirectUrl);
-    QUrl resolveRedirect(const QNetworkReply *reply) const;
-    void failLogin(const QString &message);
-    void loadBundledSchools();
-    void parseSchoolsJson(const QByteArray &data);
-    QNetworkReply *get(const QString &path, RequestKind kind);
-    QNetworkReply *postForm(const QString &path,
-                            const QUrlQuery &form,
-                            RequestKind kind);
-    QString rolePath(const QString &path) const;
-    bool usesRolePrefix(RequestKind kind) const;
-    void rememberRoleFromUrl(const QUrl &url);
-    void applyRolesJson(const QByteArray &body);
-    void applyRolesFromHtml(const QString &html, const QUrl &pageUrl);
-    void ensureRoleSelected();
-    void fetchRoles();
-    void setRole(const QString &roleId, const QString &roleName);
-    void finishRestore(bool loggedIn);
-    void emitMessageNotifications(const QJsonArray &messages, bool firstPoll);
-    void applyMessageList(const QJsonArray &messages);
-    void applyMessageListHtml(const QString &html);
-    QJsonArray extractMessagesArray(const QJsonDocument &doc) const;
-    void applyOverview(const QJsonObject &obj);
-    void applyNewsList(const QByteArray &body);
-    void applyAttendance(const QByteArray &body, const QString &contentType);
-    void applyLessonNotes(const QVariantList &items);
-    void applyMessageDetail(int messageId, const QByteArray &body, const QString &contentType);
-    void applyNewsDetail(int newsId, const QByteArray &body, const QString &contentType);
-    void clearHomeData();
-    QString messagesListPath() const;
-    void setRefreshing(bool refreshing);
-    void setDetailBusy(bool busy);
-    void armPollTimer();
-    int msecsUntilSchoolPoll() const;
-    void markMessageRead(int messageId);
-    void absorbFresh(const QString &category, const QVariantList &hits);
-    void acknowledgeCategory(const QString &category);
-    int freshCount(const QString &category) const;
-    void endRefreshIfMarked(QNetworkReply *reply);
-    bool isInvalidSession(int status, const QByteArray &body) const;
-    bool handleContentAuthFailure(int status, const QByteArray &body);
-
-    QNetworkAccessManager *m_nam;
-    QNetworkCookieJar *m_cookies;
-    QTimer m_pollTimer;
+    QTimer *m_retry;
+    QDBusConnection m_bus;
+    bool m_serviceReady;
+    bool m_signalHooked;
+    bool m_haveEpochs;
     bool m_busy;
     bool m_loggedIn;
     bool m_restoring;
     bool m_needsOtp;
-    bool m_firstMessagePoll;
-    bool m_loginInProgress;
-    int m_loginTry;
-    int m_postLoginHops;
+    bool m_refreshing;
+    bool m_detailBusy;
+    bool m_hasSchool;
+    bool m_hasCredentials;
+    int m_unreadCount;
+    int m_freshNoteCount;
+    int m_freshNewsCount;
+    int m_freshGradeCount;
+    int m_freshHomeworkCount;
+    int m_freshExamCount;
+    int m_loginSucceededEpoch;
+    int m_otpEpoch;
+    int m_loginFailedEpoch;
+    int m_restoreEpoch;
+    int m_notificationEpoch;
     QString m_error;
     QString m_status;
     QString m_schoolUrl;
     QString m_schoolName;
+    QString m_schoolHost;
     QString m_username;
     QString m_password;
+    QString m_sessionId;
     QString m_displayName;
     QString m_roleId;
     QString m_roleName;
     QString m_messageFolder;
     QString m_pollMode;
-    QString m_sessionId;
-    QString m_loginSessionId;
-    QString m_mfaFormkey;
-    QString m_htmlSessionId;
-    QMap<QString, QString> m_loginFields;
+    QString m_schoolsJson;
+    QString m_rolesJson;
+    QString m_messagesJson;
+    QString m_newsJson;
+    QString m_scheduleJson;
+    QString m_examsJson;
+    QString m_homeworkJson;
+    QString m_lessonNotesJson;
+    QString m_gradesJson;
+    QString m_currentMessageJson;
+    QString m_currentNewsJson;
     QVariantList m_schools;
     QVariantList m_roles;
     QVariantList m_messages;
@@ -306,16 +236,6 @@ private:
     QVariantList m_grades;
     QVariantMap m_currentMessage;
     QVariantMap m_currentNews;
-    int m_unreadCount;
-    int m_pendingRefresh;
-    bool m_refreshing;
-    bool m_detailBusy;
-    bool m_freshReady;
-    QSet<int> m_seenMessageIds;
-    QSet<int> m_locallyReadIds;
-    QHash<QString, QSet<QString>> m_knownKeys;
-    QHash<QString, QSet<QString>> m_unseenKeys;
-    QSet<QString> m_seededCategories;
 };
 
 #endif

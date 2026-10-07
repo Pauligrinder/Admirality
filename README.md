@@ -4,8 +4,9 @@ A Silica Harbour wrapper (`harbour-admirality`) for [Wilma / Inschool.fi](https:
 Built with Qt 5 / QML + C++ the same way most SFOS apps are, and tested against
 Platform SDK target `SailfishOS-5.2.0.15-aarch64`.
 
-The city/Wilma picker, login, and notifications are native. After sign-in the
-Wilma site opens in a WebView. Login and the school list follow the same
+The city/Wilma picker, login, home, messages, news, schedule, and notifications
+are native. The Wilma website stays available from the pulley menu and settings
+as a fallback. Login and the school list follow the same
 unofficial Wilma flow used by [wilmai](https://github.com/aikarjal/wilmai)
 and [OpenWilma](https://github.com/OpenWilma/openwilma.js):
 
@@ -13,19 +14,36 @@ and [OpenWilma](https://github.com/OpenWilma/openwilma.js):
    wilmai's public directory), or a custom address.
 2. **Sign in** — username and password against that tenant. TOTP is supported
    when Wilma asks for it.
-3. **Notifications** — unread inbox messages are polled every few minutes and
-   shown as Sailfish notifications while the app is running.
+3. **Notifications** — a user service (`harbour-admiralityd`) keeps the
+   Wilma session and polls on the interval chosen in settings: every 15
+   minutes, once an hour, every 3 hours, or 15 minutes before and after
+   the school day. New messages, notes, announcements, grades, homework,
+   and exams raise a Sailfish notification.
+
+The app and the Events view widgets both read that service over the
+session bus. Schedule shows the current day, with arrows and a week
+timetable; after the school week has ended the week view opens on next
+week. The info card shows icon counts only. Opening a message marks it
+read immediately. Lesson notes use a green, red, or grey dot.
 
 Credentials stay in the app's local settings so the session can be restored.
 
-Cover actions reload Wilma and open settings.
+Cover actions refresh native Wilma data and open settings.
+
+After install, enable the widgets under Settings → Events view and restart
+the home screen if they do not appear.
 
 ## Layout
 
 ```
 app/
   harbour-admirality.pro
+  daemon/harbour-admiralityd.pro
+  harbour-admirality.service
+  eventsview/
   src/wilmaclient.{h,cpp}
+  src/wilmaservice.{h,cpp}
+  src/wilmabridge.{h,cpp}
   data/tenant_list.json
   qml/pages/
   rpm/harbour-admirality.spec
@@ -44,12 +62,12 @@ chmod +x build.sh
 Install on the phone:
 
 ```sh
-scp app/RPMS/harbour-admirality-0.1.0-1.aarch64.rpm defaultuser@<phone-ip>:~/
+scp app/RPMS/harbour-admirality-0.2.0-1.aarch64.rpm defaultuser@<phone-ip>:~/
 ssh defaultuser@<phone-ip>
-devel-su pkcon install-local ~/harbour-admirality-0.1.0-1.aarch64.rpm
+devel-su pkcon install-local ~/harbour-admirality-0.2.0-1.aarch64.rpm
 ```
 
-Sailjail permissions used: `Internet`, `Notifications`.
+Sailjail permissions used: `Internet`, `Notifications`, `AdmiralityDBus`.
 
 ## Releases (GitHub Actions)
 

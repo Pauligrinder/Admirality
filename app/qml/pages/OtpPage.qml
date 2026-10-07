@@ -13,7 +13,7 @@ Page {
 
     Connections {
         target: wilmaClient
-        onLoginSucceeded: pageStack.replaceAbove(null, Qt.resolvedUrl("WilmaPage.qml"))
+        onLoginSucceeded: pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
     }
 
     SilicaFlickable {

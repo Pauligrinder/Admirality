@@ -34,33 +34,42 @@ Page {
         pageStack.replaceAbove(null, Qt.resolvedUrl("LoginPage.qml"))
     }
 
+    // Keep SearchField outside the list so model resets don't recreate it
+    // and dismiss the keyboard after a couple of characters.
+    Column {
+        id: headerColumn
+        width: parent.width
+
+        PageHeader { title: qsTr("Choose Wilma") }
+
+        Label {
+            x: Theme.horizontalPageMargin
+            width: parent.width - Theme.horizontalPageMargin * 2
+            wrapMode: Text.Wrap
+            color: Theme.secondaryColor
+            font.pixelSize: Theme.fontSizeSmall
+            text: qsTr("Pick your city or school. The list comes from the same public Wilma directory used by open-source clients such as wilmai.")
+        }
+
+        SearchField {
+            id: searchField
+            width: parent.width
+            placeholderText: qsTr("City or school")
+            onTextChanged: page.query = text.trim().toLowerCase()
+        }
+    }
+
     SilicaListView {
         id: list
-        anchors.fill: parent
-        model: page.filteredSchools
-        clip: true
-
-        header: Column {
-            width: list.width
-
-            PageHeader { title: qsTr("Choose Wilma") }
-
-            Label {
-                x: Theme.horizontalPageMargin
-                width: parent.width - Theme.horizontalPageMargin * 2
-                wrapMode: Text.Wrap
-                color: Theme.secondaryColor
-                font.pixelSize: Theme.fontSizeSmall
-                text: qsTr("Pick your city or school. The list comes from the same public Wilma directory used by open-source clients such as wilmai.")
-            }
-
-            SearchField {
-                id: searchField
-                width: parent.width
-                placeholderText: qsTr("City or school")
-                onTextChanged: page.query = text.trim().toLowerCase()
-            }
+        anchors {
+            top: headerColumn.bottom
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
         }
+        clip: true
+        currentIndex: -1
+        model: page.filteredSchools
 
         delegate: ListItem {
             id: schoolItem

@@ -50,12 +50,88 @@ Page {
                       : qsTr("%1 unread messages").arg(wilmaClient.unreadCount)
             }
 
+            SectionHeader {
+                visible: wilmaClient.roles.length > 1
+                text: qsTr("Account")
+            }
+
+            Repeater {
+                model: wilmaClient.roles
+                delegate: BackgroundItem {
+                    width: column.width
+                    height: Theme.itemSizeMedium
+                    visible: wilmaClient.roles.length > 1
+                    highlighted: String(modelData.id) === String(wilmaClient.roleId)
+                    onClicked: wilmaClient.selectRole(String(modelData.id))
+
+                    Label {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            leftMargin: Theme.horizontalPageMargin
+                            rightMargin: Theme.horizontalPageMargin
+                        }
+                        truncationMode: TruncationMode.Fade
+                        color: parent.highlighted ? Theme.highlightColor : Theme.primaryColor
+                        text: modelData.name || modelData.id
+                    }
+                }
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Open Wilma site")
+                enabled: wilmaClient.hasSchool
+                onClicked: pageStack.push(Qt.resolvedUrl("WilmaPage.qml"))
+            }
+
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: qsTr("Change Wilma")
-                onClicked: {
-                    wilmaClient.logout()
-                    pageStack.replaceAbove(null, Qt.resolvedUrl("SchoolPickerPage.qml"))
+                onClicked: pageStack.replaceAbove(null, Qt.resolvedUrl("SchoolPickerPage.qml"))
+            }
+
+            ComboBox {
+                id: pollBox
+                width: parent.width
+                label: qsTr("Check Wilma")
+                description: qsTr("Before and after the school day means 15 minutes before the first lesson and 15 minutes after the last one.")
+
+                property bool applying: false
+                property var modes: ["15min", "hour", "3hours", "schoolday"]
+
+                function sync() {
+                    var mode = wilmaClient.pollMode || "15min"
+                    var index = 0
+                    for (var i = 0; i < modes.length; ++i) {
+                        if (modes[i] === mode)
+                            index = i
+                    }
+                    if (currentIndex === index)
+                        return
+                    applying = true
+                    currentIndex = index
+                    applying = false
+                }
+
+                menu: ContextMenu {
+                    MenuItem { text: qsTr("Every 15 minutes") }
+                    MenuItem { text: qsTr("Once an hour") }
+                    MenuItem { text: qsTr("Every 3 hours") }
+                    MenuItem { text: qsTr("Before and after the school day") }
+                }
+                Component.onCompleted: sync()
+                Connections {
+                    target: wilmaClient
+                    onPollModeChanged: pollBox.sync()
+                }
+                onCurrentIndexChanged: {
+                    if (applying)
+                        return
+                    var mode = modes[currentIndex] || "15min"
+                    if (mode !== wilmaClient.pollMode)
+                        wilmaClient.setPollMode(mode)
                 }
             }
 

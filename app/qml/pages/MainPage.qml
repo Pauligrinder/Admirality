@@ -16,8 +16,10 @@ Page {
 
     function showHomeSection(which) {
         page.currentTab = 0
-        if (tabLoader.item && typeof tabLoader.item.reveal === "function")
-            tabLoader.item.reveal(which)
+        Qt.callLater(function() {
+            if (tabLoader.item && typeof tabLoader.item.reveal === "function")
+                tabLoader.item.reveal(which)
+        })
     }
 
     function reloadWilma() {

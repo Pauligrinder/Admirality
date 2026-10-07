@@ -6,11 +6,10 @@ Item {
     id: root
 
     // Lipstick sizes the widget from implicitHeight and only sets the width.
+    // Match Helmsman: report column.height, never childrenRect (that can stay 0).
     width: parent ? parent.width : Screen.width
     implicitWidth: width
-    // childrenRect stays non-zero when a child binding loop would report
-    // column.height as 0, which otherwise makes lipstick drop the widget.
-    implicitHeight: Math.max(column.childrenRect.height, Theme.itemSizeSmall)
+    implicitHeight: Math.max(column.height, Theme.itemSizeMedium)
     height: implicitHeight
 
     property bool active: visible && eventsViewVisible
@@ -21,11 +20,17 @@ Item {
     property bool weekMode: false
     property int dayOffset: 0
     property int weekOffset: 0
+    property var weekModel: emptyWeek()
+    property var dayLessonsList: []
 
     readonly property var palette: [
         "#1565C0", "#2E7D32", "#6A1B9A", "#EF6C00",
         "#00838F", "#C62828", "#4527A0", "#558B2F"
     ]
+
+    function emptyWeek() {
+        return { "title": "", "headers": [], "rows": [] }
+    }
 
     function finnish() {
         return String(Qt.locale().name || "").indexOf("fi") === 0
@@ -92,6 +97,15 @@ Item {
         utc.setUTCDate(utc.getUTCDate() + 4 - day)
         var yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1))
         return Math.ceil((((utc - yearStart) / 86400000) + 1) / 7)
+    }
+
+    function dayName(date) {
+        var names = ["su", "ma", "ti", "ke", "to", "pe", "la"]
+        if (root.finnish())
+            names = ["su", "ma", "ti", "ke", "to", "pe", "la"]
+        else
+            names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+        return names[date.getDay()] || ""
     }
 
     function schoolWeekEnded() {
@@ -165,50 +179,29 @@ Item {
     }
 
     function dayTitle(date) {
-        var qtDay = date.getDay() === 0 ? 7 : date.getDay()
-        var name = ""
-        try {
-            name = Qt.locale().dayName(qtDay, Locale.ShortFormat)
-        } catch (e) {
-            name = ""
-        }
-        if (!name.length)
-            name = Qt.locale().dayName(qtDay)
-        return name + " " + date.getDate() + "." + (date.getMonth() + 1) + "."
-    }
-
-    function emptyWeek() {
-        return { "title": "", "headers": [], "rows": [] }
+        return root.dayName(date) + " " + date.getDate() + "." + (date.getMonth() + 1) + "."
     }
 
     function buildWeekModel() {
         var monday = root.shownWeekMonday()
         var days = []
         var headers = []
-        for (var d = 0; d < 5; ++d) {
+        var d
+        for (d = 0; d < 5; ++d) {
             var date = root.addDays(monday, d)
             var key = root.iso(date)
-            var qtDay = date.getDay() === 0 ? 7 : date.getDay()
-            var label = ""
-            try {
-                label = Qt.locale().dayName(qtDay, Locale.ShortFormat)
-            } catch (e) {
-                label = ""
-            }
-            if (!label.length)
-                label = Qt.locale().dayName(qtDay)
             days.push(key)
             headers.push({
-                             "label": label,
+                             "label": root.dayName(date),
                              "date": date.getDate() + "." + (date.getMonth() + 1) + ".",
-                             "today": key === root.iso(root.startOfDay(new Date())),
-                             "iso": key
+                             "today": key === root.iso(root.startOfDay(new Date()))
                          })
         }
         var slots = {}
         var order = []
         var lessons = root.schedule || []
-        for (var i = 0; i < lessons.length; ++i) {
+        var i
+        for (i = 0; i < lessons.length; ++i) {
             var lesson = lessons[i]
             var index = days.indexOf(String(lesson.date || ""))
             if (index < 0)
@@ -217,7 +210,6 @@ Item {
             if (!slots[start]) {
                 slots[start] = {
                     "start": start,
-                    "end": String(lesson.end || ""),
                     "cells": [[], [], [], [], []],
                     "count": 1
                 }
@@ -225,7 +217,8 @@ Item {
             }
             slots[start].cells[index].push(lesson)
             var maxCount = 1
-            for (var c = 0; c < 5; ++c) {
+            var c
+            for (c = 0; c < 5; ++c) {
                 if (slots[start].cells[c].length > maxCount)
                     maxCount = slots[start].cells[c].length
             }
@@ -233,8 +226,8 @@ Item {
         }
         order.sort()
         var rows = []
-        for (var r = 0; r < order.length; ++r)
-            rows.push(slots[order[r]])
+        for (i = 0; i < order.length; ++i)
+            rows.push(slots[order[i]])
         return {
             "title": root.textFor("week") + " " + root.weekNumber(monday),
             "headers": headers,
@@ -243,21 +236,16 @@ Item {
     }
 
     function rebuildWeek() {
-        var built = root.emptyWeek()
         try {
-            built = root.buildWeekModel()
+            root.weekModel = root.buildWeekModel()
         } catch (e) {
-            built = root.emptyWeek()
+            root.weekModel = root.emptyWeek()
         }
-        root.weekModel = built
     }
 
-    readonly property var dayLessons: root.lessonsOn(root.shownDay())
-    property var weekModel: ({ "title": "", "headers": [], "rows": [] })
-
-    onScheduleChanged: if (root.weekMode) root.rebuildWeek()
-    onWeekOffsetChanged: if (root.weekMode) root.rebuildWeek()
-    onWeekModeChanged: if (root.weekMode) root.rebuildWeek()
+    function refreshDayLessons() {
+        root.dayLessonsList = root.lessonsOn(root.shownDay())
+    }
 
     function applyPayload(payload) {
         root.appRunning = true
@@ -265,21 +253,25 @@ Item {
         if (!payload) {
             root.loggedIn = false
             root.schedule = []
+            root.refreshDayLessons()
             return
         }
         try {
             var state = JSON.parse(payload)
             root.loggedIn = !!state.loggedIn
             root.schedule = state.schedule || []
+            root.refreshDayLessons()
+            if (root.weekMode)
+                root.rebuildWeek()
         } catch (e) {
             root.loggedIn = false
             root.schedule = []
+            root.refreshDayLessons()
             root.errorText = root.textFor("unavailable")
         }
     }
 
     function fetchState() {
-        // Replacing the model while the events view is off screen is wasted work.
         if (!root.active)
             return
         wilma.call("GetState", [],
@@ -301,8 +293,14 @@ Item {
     function reload() { refresh() }
     function save() {}
 
-    Component.onCompleted: if (active) refresh()
+    Component.onCompleted: {
+        root.refreshDayLessons()
+        if (active)
+            refresh()
+    }
     onActiveChanged: if (active) refresh()
+    onDayOffsetChanged: root.refreshDayLessons()
+    onWeekOffsetChanged: if (root.weekMode) root.rebuildWeek()
 
     Timer {
         interval: 30000
@@ -317,7 +315,6 @@ Item {
         path: "/wilma"
         iface: "org.admirality.Wilma"
         signalsEnabled: root.active
-        // Nemo.DBus maps StateChanged to a lowercase-initial handler, same as Helmsman.
         function stateChanged() {
             root.fetchState()
         }
@@ -332,15 +329,20 @@ Item {
             width: parent.width
             height: Theme.itemSizeSmall
 
-            IconButton {
+            MouseArea {
                 width: Theme.itemSizeSmall
-                height: Theme.itemSizeSmall
-                icon.source: "image://theme/icon-m-left"
+                height: parent.height
                 onClicked: {
                     if (root.weekMode)
                         root.weekOffset -= 1
                     else
                         root.dayOffset -= 1
+                }
+                Image {
+                    anchors.centerIn: parent
+                    width: Theme.iconSizeMedium
+                    height: Theme.iconSizeMedium
+                    source: "image://theme/icon-m-left"
                 }
             }
 
@@ -353,39 +355,57 @@ Item {
                 color: Theme.highlightColor
                 font.pixelSize: Theme.fontSizeMedium
                 font.family: Theme.fontFamilyHeading
-                text: root.weekMode ? root.weekModel.title : root.dayTitle(root.shownDay())
+                text: root.weekMode
+                      ? (root.weekModel.title || root.textFor("week"))
+                      : root.dayTitle(root.shownDay())
             }
 
-            IconButton {
+            MouseArea {
                 width: Theme.itemSizeSmall
-                height: Theme.itemSizeSmall
-                icon.source: "image://theme/icon-m-right"
+                height: parent.height
                 onClicked: {
                     if (root.weekMode)
                         root.weekOffset += 1
                     else
                         root.dayOffset += 1
                 }
+                Image {
+                    anchors.centerIn: parent
+                    width: Theme.iconSizeMedium
+                    height: Theme.iconSizeMedium
+                    source: "image://theme/icon-m-right"
+                }
             }
 
-            IconButton {
-                width: Theme.itemSizeSmall
-                height: Theme.itemSizeSmall
+            MouseArea {
+                width: root.weekMode ? Theme.itemSizeSmall : 0
+                height: parent.height
                 visible: root.weekMode
-                icon.source: "image://theme/icon-m-home"
                 onClicked: root.weekOffset = 0
+                Image {
+                    anchors.centerIn: parent
+                    width: Theme.iconSizeMedium
+                    height: Theme.iconSizeMedium
+                    visible: parent.visible
+                    source: "image://theme/icon-m-home"
+                }
             }
 
-            IconButton {
+            MouseArea {
                 width: Theme.itemSizeSmall
-                height: Theme.itemSizeSmall
-                icon.source: root.weekMode
-                             ? "image://theme/icon-m-back"
-                             : "image://theme/icon-m-calendar"
+                height: parent.height
                 onClicked: {
-                    if (!root.weekMode)
-                        root.rebuildWeek()
                     root.weekMode = !root.weekMode
+                    if (root.weekMode)
+                        root.rebuildWeek()
+                }
+                Image {
+                    anchors.centerIn: parent
+                    width: Theme.iconSizeMedium
+                    height: Theme.iconSizeMedium
+                    source: root.weekMode
+                            ? "image://theme/icon-m-back"
+                            : "image://theme/icon-m-calendar"
                 }
             }
         }
@@ -393,8 +413,13 @@ Item {
         Label {
             x: Theme.horizontalPageMargin
             width: parent.width - 2 * x
-            visible: !root.loggedIn || (!root.weekMode && root.dayLessons.length === 0)
-                     || (root.weekMode && root.weekModel.rows.length === 0)
+            visible: {
+                if (!root.loggedIn)
+                    return true
+                if (root.weekMode)
+                    return !(root.weekModel.rows && root.weekModel.rows.length)
+                return root.dayLessonsList.length === 0
+            }
             wrapMode: Text.Wrap
             color: Theme.secondaryColor
             font.pixelSize: Theme.fontSizeSmall
@@ -409,10 +434,11 @@ Item {
 
         Column {
             width: parent.width
-            visible: !root.weekMode && root.dayLessons.length > 0
+            visible: !root.weekMode && root.loggedIn && root.dayLessonsList.length > 0
+            spacing: 0
 
             Repeater {
-                model: root.dayLessons
+                model: root.dayLessonsList
                 delegate: Item {
                     width: column.width
                     height: dayCol.height + Theme.paddingMedium
@@ -452,36 +478,26 @@ Item {
             }
         }
 
-        Loader {
-            id: weekLoader
-            width: parent.width
-            active: root.weekMode && root.weekModel.rows && root.weekModel.rows.length > 0
-            height: active && item ? item.implicitHeight : 0
-            sourceComponent: Component {
-                Column {
-                    id: grid
-                    width: weekLoader.width - 2 * Theme.paddingMedium
-                    x: Theme.paddingMedium
-                    spacing: Theme.paddingSmall
-                    implicitHeight: childrenRect.height
+        Column {
+            id: weekGrid
+            width: parent.width - 2 * Theme.paddingMedium
+            x: Theme.paddingMedium
+            spacing: Theme.paddingSmall
+            visible: root.weekMode && root.weekModel.rows && root.weekModel.rows.length > 0
 
             property int timeWidth: Math.max(Theme.itemSizeSmall, Math.round(width * 0.16))
-            property int dayWidth: Math.floor((width - timeWidth) / 5)
+            property int dayWidth: Math.max(1, Math.floor((width - timeWidth) / 5))
 
             Row {
-                width: grid.width
+                width: weekGrid.width
                 height: Theme.fontSizeSmall * 3
-                spacing: 0
 
-                Item { width: grid.timeWidth; height: 1 }
+                Item { width: weekGrid.timeWidth; height: 1 }
 
                 Repeater {
                     model: root.weekModel.headers
                     delegate: Column {
-                        id: headerCol
-                        width: grid.dayWidth
-                        spacing: 0
-
+                        width: weekGrid.dayWidth
                         Label {
                             width: parent.width
                             horizontalAlignment: Text.AlignHCenter
@@ -490,7 +506,6 @@ Item {
                             color: modelData.today ? Theme.highlightColor : Theme.primaryColor
                             text: modelData.label
                         }
-
                         Label {
                             width: parent.width
                             horizontalAlignment: Text.AlignHCenter
@@ -505,14 +520,13 @@ Item {
             Repeater {
                 model: root.weekModel.rows
                 delegate: Row {
-                    width: grid.width
+                    width: weekGrid.width
                     height: Math.max(Theme.itemSizeSmall,
                                      (modelData.count || 1) * (Theme.fontSizeExtraSmall + Theme.paddingMedium)
                                      + Theme.paddingSmall)
-                    spacing: 0
 
                     Label {
-                        width: grid.timeWidth
+                        width: weekGrid.timeWidth
                         height: parent.height
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Theme.fontSizeExtraSmall
@@ -523,7 +537,7 @@ Item {
                     Repeater {
                         model: modelData.cells
                         delegate: Item {
-                            width: grid.dayWidth
+                            width: weekGrid.dayWidth
                             height: parent.height
 
                             Column {
@@ -536,12 +550,11 @@ Item {
                                     model: modelData
                                     delegate: Rectangle {
                                         width: slotCol.width
-                                        height: codeLabel.implicitHeight + Theme.paddingSmall
+                                        height: Theme.fontSizeExtraSmall + Theme.paddingSmall
                                         radius: Theme.paddingSmall
                                         color: root.colorFor(modelData.subjectCode || modelData.subject)
 
                                         Label {
-                                            id: codeLabel
                                             anchors.centerIn: parent
                                             width: parent.width - Theme.paddingSmall
                                             horizontalAlignment: Text.AlignHCenter
@@ -556,8 +569,6 @@ Item {
                             }
                         }
                     }
-                }
-            }
                 }
             }
         }

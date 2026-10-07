@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
 #include <QTimer>
 
 namespace {
@@ -265,6 +266,10 @@ void WilmaService::OpenView(const QString &view)
     m_openView = page;
     m_openViewEpoch += 1;
     schedule();
+    // Events view widgets run inside lipstick — they cannot reliably find the
+    // launcher item, so the daemon starts/raises the UI the same way the
+    // desktop entry does.
+    launchUi();
 }
 
 void WilmaService::ClearOpenView()
@@ -273,4 +278,16 @@ void WilmaService::ClearOpenView()
         return;
     m_openView.clear();
     schedule();
+}
+
+void WilmaService::launchUi()
+{
+    const QString bin = QStringLiteral("/usr/bin/harbour-admirality");
+    if (QProcess::startDetached(QStringLiteral("/usr/bin/invoker"),
+                                QStringList()
+                                << QStringLiteral("--type=silica-qt5")
+                                << QStringLiteral("--single-instance")
+                                << bin))
+        return;
+    QProcess::startDetached(bin, QStringList());
 }

@@ -112,6 +112,11 @@ Item {
                 onClicked: page.openWilmaSite()
             }
             MenuItem {
+                visible: wilmaClient.roles.length > 1
+                text: qsTr("Change user")
+                onClicked: pageStack.push(Qt.resolvedUrl("RolePickerPage.qml"))
+            }
+            MenuItem {
                 text: qsTr("Refresh")
                 onClicked: page.reloadWilma()
             }
@@ -123,20 +128,14 @@ Item {
             spacing: Theme.paddingMedium
 
             PageHeader {
-                title: wilmaClient.schoolName.length > 0
-                       ? wilmaClient.schoolName
-                       : qsTr("Admirality")
-            }
-
-            Label {
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                wrapMode: Text.Wrap
-                color: Theme.highlightColor
-                font.pixelSize: Theme.fontSizeLarge
-                text: wilmaClient.displayName.length > 0
-                      ? qsTr("Hello, %1").arg(wilmaClient.displayName)
-                      : qsTr("Signed in")
+                title: wilmaClient.roleName.length > 0
+                       ? wilmaClient.roleName
+                       : (wilmaClient.displayName.length > 0
+                          ? wilmaClient.displayName
+                          : qsTr("Admirality"))
+                description: wilmaClient.schoolName.length > 0
+                             ? wilmaClient.schoolName
+                             : wilmaClient.schoolHost
             }
 
             Label {
@@ -146,17 +145,13 @@ Item {
                 color: Theme.secondaryColor
                 font.pixelSize: Theme.fontSizeExtraSmall
                 text: {
-                    var bits = []
-                    if (wilmaClient.roleName.length > 0)
-                        bits.push(wilmaClient.roleName)
                     if (wilmaClient.unreadCount === 1)
-                        bits.push(qsTr("1 unread message"))
-                    else if (wilmaClient.unreadCount > 1)
-                        bits.push(qsTr("%1 unread messages").arg(wilmaClient.unreadCount))
-                    if (bits.length)
-                        return bits.join(" · ")
-                    return wilmaClient.schoolHost
+                        return qsTr("1 unread message")
+                    if (wilmaClient.unreadCount > 1)
+                        return qsTr("%1 unread messages").arg(wilmaClient.unreadCount)
+                    return ""
                 }
+                visible: text.length > 0
             }
 
             SectionHeader { text: qsTr("Today") }

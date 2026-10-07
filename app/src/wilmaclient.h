@@ -110,6 +110,7 @@ public:
     int freshGradeCount() const;
     int freshHomeworkCount() const;
     int freshExamCount() const;
+    int roleUnreadTotal(const QString &roleId) const;
 
     Q_INVOKABLE QString normalizeSchoolUrl(const QString &raw) const;
 
@@ -196,7 +197,8 @@ private:
         RequestNewsList,
         RequestNewsItem,
         RequestMessageItem,
-        RequestAttendance
+        RequestAttendance,
+        RequestRoleUnreadProbe
     };
 
     void setBusy(bool busy);
@@ -267,6 +269,11 @@ private:
     void endRefreshIfMarked(QNetworkReply *reply);
     bool isInvalidSession(int status, const QByteArray &body) const;
     bool handleContentAuthFailure(int status, const QByteArray &body);
+    int currentUnreadStuff() const;
+    void setRoleScore(const QString &roleId, int score);
+    void startRoleUnreadProbes();
+    void handleRoleUnreadProbe(QNetworkReply *reply, const QByteArray &body);
+    void maybeAutoSelectHottestRole();
 
     QNetworkAccessManager *m_nam;
     QNetworkCookieJar *m_cookies;
@@ -316,6 +323,10 @@ private:
     QHash<QString, QSet<QString>> m_knownKeys;
     QHash<QString, QSet<QString>> m_unseenKeys;
     QSet<QString> m_seededCategories;
+    int m_roleProbePending;
+    bool m_roleScoresChanged;
+    QHash<QString, int> m_roleUnreadScores;
+    QHash<QString, int> m_roleFreshTotals;
 };
 
 #endif

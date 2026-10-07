@@ -14,7 +14,12 @@ Item {
         currentIndex: -1
         model: wilmaClient.news
 
-        header: PageHeader { title: qsTr("News") }
+        header: PageHeader {
+            title: qsTr("News")
+            description: wilmaClient.roleName.length > 0
+                         ? wilmaClient.roleName
+                         : wilmaClient.displayName
+        }
 
         PullDownMenu {
             busy: wilmaClient.refreshing
@@ -25,6 +30,11 @@ Item {
             MenuItem {
                 text: qsTr("Open Wilma site")
                 onClicked: pageStack.push(Qt.resolvedUrl("WilmaPage.qml"))
+            }
+            MenuItem {
+                visible: wilmaClient.roles.length > 1
+                text: qsTr("Change user")
+                onClicked: pageStack.push(Qt.resolvedUrl("RolePickerPage.qml"))
             }
             MenuItem {
                 text: qsTr("Refresh")

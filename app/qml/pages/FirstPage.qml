@@ -18,6 +18,9 @@ Page {
 
         if (loggedIn) {
             pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
+            // Events widget may have requested a page before splash finished.
+            if (appWindow.pendingOpenView && appWindow.pendingOpenView.length)
+                appWindow.openWilmaView(appWindow.pendingOpenView)
             return
         }
         if (wilmaClient.hasSchool)

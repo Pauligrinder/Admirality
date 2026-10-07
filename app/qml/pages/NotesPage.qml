@@ -58,6 +58,11 @@ Item {
                 onClicked: pageStack.push(Qt.resolvedUrl("WilmaPage.qml"))
             }
             MenuItem {
+                visible: wilmaClient.roles.length > 1
+                text: qsTr("Change user")
+                onClicked: pageStack.push(Qt.resolvedUrl("RolePickerPage.qml"))
+            }
+            MenuItem {
                 text: qsTr("Refresh")
                 onClicked: wilmaClient.refreshHome()
             }
@@ -69,7 +74,9 @@ Item {
 
             PageHeader {
                 title: qsTr("Lesson notes")
-                description: wilmaClient.roleName
+                description: wilmaClient.roleName.length > 0
+                             ? wilmaClient.roleName
+                             : wilmaClient.displayName
             }
 
             Repeater {

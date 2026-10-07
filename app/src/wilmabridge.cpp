@@ -336,7 +336,14 @@ void WilmaBridge::applyState(const QString &json)
         emit schoolNameChanged();
     if (setString(&m_username, root.value(QStringLiteral("username")).toString()))
         emit usernameChanged();
-    const bool passwordChangedFlag = setString(&m_password, root.value(QStringLiteral("password")).toString());
+    // Password is intentionally omitted from GetState. Never treat a missing /
+    // empty field as "clear the password" — that wiped stored credentials.
+    bool passwordChangedFlag = false;
+    if (root.contains(QStringLiteral("password"))) {
+        const QString pw = root.value(QStringLiteral("password")).toString();
+        if (!pw.isEmpty())
+            passwordChangedFlag = setString(&m_password, pw);
+    }
     const bool credentialsChangedFlag = setBool(&m_hasCredentials, root.value(QStringLiteral("hasCredentials")).toBool());
     if (passwordChangedFlag)
         emit passwordChanged();

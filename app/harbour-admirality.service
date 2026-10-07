@@ -4,6 +4,11 @@ After=pre-user-session.target lipstick.service
 Requires=dbus.socket
 
 [Service]
+# Headless daemon: do not inherit the session wayland QPA.
+# Quote values that contain spaces — systemd otherwise truncates them and
+# a broken QT_MESSAGE_PATTERN has been observed to break Wilma login.
+Environment=QT_QPA_PLATFORM=offscreen
+Environment="QT_MESSAGE_PATTERN=[%{type}] %{message}"
 ExecStart=/usr/bin/harbour-admiralityd
 Restart=on-failure
 RestartSec=2

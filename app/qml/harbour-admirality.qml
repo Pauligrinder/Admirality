@@ -34,6 +34,28 @@ ApplicationWindow
         pageStack.replaceAbove(null, Qt.resolvedUrl("pages/LoginPage.qml"))
     }
 
+    function openWilmaView(view) {
+        appWindow.activate()
+        if (!wilmaClient.loggedIn)
+            return
+        var page = pageStack.currentPage
+        if (!page || page.objectName !== "MainPage") {
+            pageStack.replaceAbove(null, Qt.resolvedUrl("pages/MainPage.qml"))
+            page = pageStack.currentPage
+        }
+        if (!page)
+            return
+        if (view === "messages" && typeof page.showTab === "function")
+            page.showTab(1)
+        else if (view === "notes" && typeof page.showTab === "function")
+            page.showTab(3)
+        else if (view === "news" && typeof page.showTab === "function")
+            page.showTab(4)
+        else if ((view === "grades" || view === "homework" || view === "exams")
+                 && typeof page.showHomeSection === "function")
+            page.showHomeSection(view)
+    }
+
     function openSettings() {
         if (pageStack.currentPage && pageStack.currentPage.objectName === "SettingsPage")
             return
@@ -66,6 +88,10 @@ ApplicationWindow
                 appWindow.goLogin()
         }
         onNotificationReceived: appWindow.showWilmaNotification(title, message)
+        onOpenViewRequested: {
+            appWindow.openWilmaView(view)
+            wilmaClient.clearOpenView()
+        }
     }
 
     onApplicationActiveChanged: {

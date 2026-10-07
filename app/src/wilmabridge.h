@@ -125,6 +125,7 @@ public slots:
     void acknowledgeGrades();
     void acknowledgeHomework();
     void acknowledgeExams();
+    void clearOpenView();
 
 signals:
     void serviceReadyChanged();
@@ -167,6 +168,7 @@ signals:
     void notificationReceived(const QString &title,
                               const QString &message,
                               const QVariantMap &data);
+    void openViewRequested(const QString &view);
 
 private slots:
     void tryConnect();
@@ -201,6 +203,7 @@ private:
     int m_loginFailedEpoch;
     int m_restoreEpoch;
     int m_notificationEpoch;
+    int m_openViewEpoch;
     QString m_error;
     QString m_status;
     QString m_schoolUrl;

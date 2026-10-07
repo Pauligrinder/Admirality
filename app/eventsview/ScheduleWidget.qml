@@ -8,7 +8,9 @@ Item {
     // Lipstick sizes the widget from implicitHeight and only sets the width.
     width: parent ? parent.width : Screen.width
     implicitWidth: width
-    implicitHeight: column.height
+    // childrenRect stays non-zero when a child binding loop would report
+    // column.height as 0, which otherwise makes lipstick drop the widget.
+    implicitHeight: Math.max(column.childrenRect.height, Theme.itemSizeSmall)
     height: implicitHeight
 
     property bool active: visible && eventsViewVisible
@@ -163,21 +165,41 @@ Item {
     }
 
     function dayTitle(date) {
-        var locale = Qt.locale()
-        return date.toLocaleDateString(locale, Locale.ShortFormat)
+        var qtDay = date.getDay() === 0 ? 7 : date.getDay()
+        var name = ""
+        try {
+            name = Qt.locale().dayName(qtDay, Locale.ShortFormat)
+        } catch (e) {
+            name = ""
+        }
+        if (!name.length)
+            name = Qt.locale().dayName(qtDay)
+        return name + " " + date.getDate() + "." + (date.getMonth() + 1) + "."
     }
 
-    readonly property var dayLessons: root.lessonsOn(root.shownDay())
-    readonly property var weekModel: {
+    function emptyWeek() {
+        return { "title": "", "headers": [], "rows": [] }
+    }
+
+    function buildWeekModel() {
         var monday = root.shownWeekMonday()
         var days = []
         var headers = []
         for (var d = 0; d < 5; ++d) {
             var date = root.addDays(monday, d)
             var key = root.iso(date)
+            var qtDay = date.getDay() === 0 ? 7 : date.getDay()
+            var label = ""
+            try {
+                label = Qt.locale().dayName(qtDay, Locale.ShortFormat)
+            } catch (e) {
+                label = ""
+            }
+            if (!label.length)
+                label = Qt.locale().dayName(qtDay)
             days.push(key)
             headers.push({
-                             "label": Qt.locale().dayName(date.getDay() === 0 ? 7 : date.getDay(), Locale.ShortFormat),
+                             "label": label,
                              "date": date.getDate() + "." + (date.getMonth() + 1) + ".",
                              "today": key === root.iso(root.startOfDay(new Date())),
                              "iso": key
@@ -196,7 +218,8 @@ Item {
                 slots[start] = {
                     "start": start,
                     "end": String(lesson.end || ""),
-                    "cells": [[], [], [], [], []]
+                    "cells": [[], [], [], [], []],
+                    "count": 1
                 }
                 order.push(start)
             }
@@ -218,6 +241,23 @@ Item {
             "rows": rows
         }
     }
+
+    function rebuildWeek() {
+        var built = root.emptyWeek()
+        try {
+            built = root.buildWeekModel()
+        } catch (e) {
+            built = root.emptyWeek()
+        }
+        root.weekModel = built
+    }
+
+    readonly property var dayLessons: root.lessonsOn(root.shownDay())
+    property var weekModel: ({ "title": "", "headers": [], "rows": [] })
+
+    onScheduleChanged: if (root.weekMode) root.rebuildWeek()
+    onWeekOffsetChanged: if (root.weekMode) root.rebuildWeek()
+    onWeekModeChanged: if (root.weekMode) root.rebuildWeek()
 
     function applyPayload(payload) {
         root.appRunning = true
@@ -342,7 +382,11 @@ Item {
                 icon.source: root.weekMode
                              ? "image://theme/icon-m-back"
                              : "image://theme/icon-m-calendar"
-                onClicked: root.weekMode = !root.weekMode
+                onClicked: {
+                    if (!root.weekMode)
+                        root.rebuildWeek()
+                    root.weekMode = !root.weekMode
+                }
             }
         }
 
@@ -375,7 +419,7 @@ Item {
 
                     Column {
                         id: dayCol
-                        anchors.verticalCenter: parent.verticalCenter
+                        y: Theme.paddingMedium / 2
                         x: Theme.horizontalPageMargin
                         width: parent.width - 2 * x
 
@@ -408,12 +452,18 @@ Item {
             }
         }
 
-        Column {
-            id: grid
-            width: parent.width - 2 * Theme.paddingMedium
-            x: Theme.paddingMedium
-            visible: root.weekMode && root.weekModel.rows.length > 0
-            spacing: Theme.paddingSmall
+        Loader {
+            id: weekLoader
+            width: parent.width
+            active: root.weekMode && root.weekModel.rows && root.weekModel.rows.length > 0
+            height: active && item ? item.implicitHeight : 0
+            sourceComponent: Component {
+                Column {
+                    id: grid
+                    width: weekLoader.width - 2 * Theme.paddingMedium
+                    x: Theme.paddingMedium
+                    spacing: Theme.paddingSmall
+                    implicitHeight: childrenRect.height
 
             property int timeWidth: Math.max(Theme.itemSizeSmall, Math.round(width * 0.16))
             property int dayWidth: Math.floor((width - timeWidth) / 5)
@@ -506,6 +556,8 @@ Item {
                             }
                         }
                     }
+                }
+            }
                 }
             }
         }

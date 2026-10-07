@@ -31,6 +31,7 @@ WilmaService::WilmaService(WilmaClient *client, QObject *parent)
     , m_loginFailedEpoch(0)
     , m_restoreEpoch(0)
     , m_notificationEpoch(0)
+    , m_openViewEpoch(0)
     , m_restoreOk(false)
 {
     m_timer->setSingleShot(true);
@@ -210,6 +211,8 @@ QString WilmaService::stateJson() const
     root.insert(QStringLiteral("notificationEpoch"), m_notificationEpoch);
     root.insert(QStringLiteral("notificationTitle"), m_notificationTitle);
     root.insert(QStringLiteral("notificationBody"), m_notificationBody);
+    root.insert(QStringLiteral("openView"), m_openView);
+    root.insert(QStringLiteral("openViewEpoch"), m_openViewEpoch);
     return QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact));
 }
 
@@ -248,3 +251,26 @@ void WilmaService::AcknowledgeNews() { m_client->acknowledgeNews(); }
 void WilmaService::AcknowledgeGrades() { m_client->acknowledgeGrades(); }
 void WilmaService::AcknowledgeHomework() { m_client->acknowledgeHomework(); }
 void WilmaService::AcknowledgeExams() { m_client->acknowledgeExams(); }
+
+void WilmaService::OpenView(const QString &view)
+{
+    const QString page = view.trimmed();
+    if (page != QLatin1String("messages")
+            && page != QLatin1String("notes")
+            && page != QLatin1String("news")
+            && page != QLatin1String("grades")
+            && page != QLatin1String("homework")
+            && page != QLatin1String("exams"))
+        return;
+    m_openView = page;
+    m_openViewEpoch += 1;
+    schedule();
+}
+
+void WilmaService::ClearOpenView()
+{
+    if (m_openView.isEmpty())
+        return;
+    m_openView.clear();
+    schedule();
+}

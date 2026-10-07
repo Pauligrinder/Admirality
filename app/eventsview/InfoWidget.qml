@@ -1,6 +1,7 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
 import Nemo.DBus 2.0
+import org.nemomobile.lipstick 0.1
 
 Item {
     id: root
@@ -20,13 +21,56 @@ Item {
     property int exams: 0
 
     readonly property var counts: [
-        { "icon": "image://theme/icon-m-mail", "count": root.messages },
-        { "icon": "image://theme/icon-m-document", "count": root.notes },
-        { "icon": "image://theme/icon-m-events", "count": root.news },
-        { "icon": "image://theme/icon-m-favorite", "count": root.grades },
-        { "icon": "image://theme/icon-m-edit", "count": root.homework },
-        { "icon": "image://theme/icon-m-calendar", "count": root.exams }
+        { "icon": "image://theme/icon-m-mail", "count": root.messages, "view": "messages" },
+        { "icon": "image://theme/icon-m-document", "count": root.notes, "view": "notes" },
+        { "icon": "image://theme/icon-m-events", "count": root.news, "view": "news" },
+        { "icon": "image://theme/icon-m-favorite", "count": root.grades, "view": "grades" },
+        { "icon": "image://theme/icon-m-edit", "count": root.homework, "view": "homework" },
+        { "icon": "image://theme/icon-m-calendar", "count": root.exams, "view": "exams" }
     ]
+
+    function findApp(model, depth) {
+        if (!model || depth > 4 || typeof model.get !== "function")
+            return null
+        var n = model.count || 0
+        for (var i = 0; i < n; ++i) {
+            var item = model.get(i)
+            if (!item)
+                continue
+            if (String(item.filePath || "").indexOf("harbour-admirality.desktop") >= 0)
+                return item
+            if (item.type === LauncherModel.Folder) {
+                var nested = root.findApp(item, depth + 1)
+                if (!nested && item.model)
+                    nested = root.findApp(item.model, depth + 1)
+                if (nested)
+                    return nested
+            }
+        }
+        return null
+    }
+
+    function launchApp() {
+        var item = root.findApp(launcherModel, 0)
+        if (!item)
+            return
+        var raised = false
+        try {
+            if (Desktop && Desktop.instance && Desktop.instance.switcher) {
+                Desktop.instance.switcher.activateWindowFor(item)
+                raised = true
+            }
+        } catch (e) {
+            raised = false
+        }
+        if (!raised)
+            item.launchApplication()
+    }
+
+    function openCount(view) {
+        wilma.call("OpenView", [view])
+        root.launchApp()
+    }
 
     function applyPayload(payload) {
         root.appRunning = true
@@ -72,6 +116,10 @@ Item {
         onTriggered: root.fetchState()
     }
 
+    LauncherModel {
+        id: launcherModel
+    }
+
     DBusInterface {
         id: wilma
         service: "org.admirality.harbour-admirality"
@@ -87,18 +135,26 @@ Item {
     Column {
         id: column
         width: parent.width
+        spacing: Theme.paddingSmall
+
+        Label {
+            x: Theme.horizontalPageMargin
+            width: parent.width - 2 * x
+            text: "Wilma"
+            color: Theme.highlightColor
+            font.pixelSize: Theme.fontSizeMedium
+            font.family: Theme.fontFamilyHeading
+            truncationMode: TruncationMode.Fade
+        }
 
         Item {
             x: Theme.horizontalPageMargin
             width: parent.width - 2 * x
-            height: row.height + Theme.paddingLarge * 2 + Theme.paddingMedium
+            height: Theme.iconSizeSmall + Theme.paddingMedium * 2
 
             Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(parent.width, row.width + Theme.paddingLarge * 2)
-                height: row.height + Theme.paddingLarge * 2
-                radius: Theme.paddingMedium
+                anchors.fill: parent
+                radius: Theme.paddingSmall
                 color: "#03A9F4"
                 opacity: root.appRunning ? 0.32 : 0.16
             }
@@ -106,32 +162,34 @@ Item {
             Row {
                 id: row
                 anchors.centerIn: parent
-                spacing: Theme.paddingLarge
+                width: parent.width - Theme.paddingSmall * 2
+                height: Theme.iconSizeSmall
+                spacing: 0
 
                 Repeater {
                     model: root.counts
-                    delegate: Item {
-                        width: Math.max(icon.width, badge.implicitWidth)
-                        height: icon.height
+                    delegate: MouseArea {
+                        width: Math.floor(row.width / root.counts.length)
+                        height: row.height
+                        onClicked: root.openCount(modelData.view)
 
                         Image {
                             id: icon
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: Theme.iconSizeMedium
-                            height: Theme.iconSizeMedium
+                            anchors.centerIn: parent
+                            width: Theme.iconSizeSmall
+                            height: Theme.iconSizeSmall
                             sourceSize.width: width
                             sourceSize.height: height
                             source: modelData.icon
-                            opacity: modelData.count > 0 ? 1 : 0.4
+                            opacity: modelData.count > 0 ? 1 : 0.45
                         }
 
                         Label {
-                            id: badge
                             anchors.right: icon.right
                             anchors.bottom: icon.bottom
                             anchors.rightMargin: -Theme.paddingSmall
                             anchors.bottomMargin: -Theme.paddingSmall
-                            font.pixelSize: Theme.fontSizeSmall
+                            font.pixelSize: Theme.fontSizeExtraSmall
                             font.bold: modelData.count > 0
                             color: modelData.count > 0 ? Theme.highlightColor : Theme.secondaryColor
                             text: modelData.count

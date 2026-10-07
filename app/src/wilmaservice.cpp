@@ -174,7 +174,7 @@ QString WilmaService::stateJson() const
     root.insert(QStringLiteral("schoolName"), m_client->schoolName());
     root.insert(QStringLiteral("schoolHost"), m_client->schoolHost());
     root.insert(QStringLiteral("username"), m_client->username());
-    root.insert(QStringLiteral("password"), m_client->password());
+    // Never expose the password over D-Bus — widgets only need hasCredentials.
     root.insert(QStringLiteral("sessionId"), m_client->sessionId());
     root.insert(QStringLiteral("displayName"), m_client->displayName());
     root.insert(QStringLiteral("roleId"), m_client->roleId());
@@ -193,7 +193,16 @@ QString WilmaService::stateJson() const
     root.insert(QStringLiteral("freshHomeworkCount"), m_client->freshHomeworkCount());
     root.insert(QStringLiteral("freshExamCount"), m_client->freshExamCount());
     root.insert(QStringLiteral("schools"), listValue(m_client->schools()));
-    root.insert(QStringLiteral("roles"), listValue(m_client->roles()));
+    {
+        QJsonArray roles;
+        for (const QVariant &entry : m_client->roles()) {
+            QJsonObject role = QJsonObject::fromVariantMap(entry.toMap());
+            const QString id = role.value(QStringLiteral("id")).toString();
+            role.insert(QStringLiteral("unreadTotal"), m_client->roleUnreadTotal(id));
+            roles.append(role);
+        }
+        root.insert(QStringLiteral("roles"), roles);
+    }
     root.insert(QStringLiteral("messages"), listValue(m_client->messages()));
     root.insert(QStringLiteral("news"), listValue(m_client->news()));
     root.insert(QStringLiteral("schedule"), listValue(m_client->schedule()));
@@ -256,12 +265,15 @@ void WilmaService::AcknowledgeExams() { m_client->acknowledgeExams(); }
 void WilmaService::OpenView(const QString &view)
 {
     const QString page = view.trimmed();
+    const bool scheduleView = page == QLatin1String("schedule")
+            || page.startsWith(QLatin1String("schedule:"));
     if (page != QLatin1String("messages")
             && page != QLatin1String("notes")
             && page != QLatin1String("news")
             && page != QLatin1String("grades")
             && page != QLatin1String("homework")
-            && page != QLatin1String("exams"))
+            && page != QLatin1String("exams")
+            && !scheduleView)
         return;
     m_openView = page;
     m_openViewEpoch += 1;
@@ -282,12 +294,19 @@ void WilmaService::ClearOpenView()
 
 void WilmaService::launchUi()
 {
-    const QString bin = QStringLiteral("/usr/bin/harbour-admirality");
+    // Match how lipstick/sailjail starts the app: --id= selects the desktop
+    // entry and firejail profile. A bare path skips Sailjail and often fails
+    // to raise a cold start from the Events widgets.
     if (QProcess::startDetached(QStringLiteral("/usr/bin/invoker"),
                                 QStringList()
                                 << QStringLiteral("--type=silica-qt5")
+                                << QStringLiteral("--id=harbour-admirality")
                                 << QStringLiteral("--single-instance")
-                                << bin))
+                                << QStringLiteral("harbour-admirality")))
         return;
-    QProcess::startDetached(bin, QStringList());
+    if (QProcess::startDetached(QStringLiteral("xdg-open"),
+                                QStringList()
+                                << QStringLiteral("/usr/share/applications/harbour-admirality.desktop")))
+        return;
+    QProcess::startDetached(QStringLiteral("/usr/bin/harbour-admirality"), QStringList());
 }

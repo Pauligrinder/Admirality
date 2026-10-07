@@ -6,6 +6,8 @@ Item {
     objectName: "SchedulePage"
     anchors.fill: parent
 
+    property string highlightDate: appWindow.pendingScheduleDate || ""
+
     property var days: {
         var groups = []
         var map = {}
@@ -26,7 +28,33 @@ Item {
         return groups
     }
 
+    function scrollToHighlight() {
+        if (!page.highlightDate.length)
+            return
+        for (var i = 0; i < dayRepeater.count; ++i) {
+            var item = dayRepeater.itemAt(i)
+            if (!item || item.dayKey !== page.highlightDate)
+                continue
+            var p = item.mapToItem(flickable.contentItem, 0, 0)
+            flickable.contentY = Math.max(0, p.y - Theme.paddingLarge)
+            return
+        }
+    }
+
+    onHighlightDateChanged: scrollTimer.restart()
+    onDaysChanged: if (page.highlightDate.length) scrollTimer.restart()
+
+    Timer {
+        id: scrollTimer
+        interval: 80
+        repeat: false
+        onTriggered: page.scrollToHighlight()
+    }
+
+    Component.onCompleted: if (page.highlightDate.length) scrollTimer.start()
+
     SilicaFlickable {
+        id: flickable
         anchors.fill: parent
         contentHeight: column.height + Theme.paddingLarge
 
@@ -43,6 +71,11 @@ Item {
                 onClicked: pageStack.push(Qt.resolvedUrl("WilmaPage.qml"))
             }
             MenuItem {
+                visible: wilmaClient.roles.length > 1
+                text: qsTr("Change user")
+                onClicked: pageStack.push(Qt.resolvedUrl("RolePickerPage.qml"))
+            }
+            MenuItem {
                 text: qsTr("Refresh")
                 onClicked: wilmaClient.refreshHome()
             }
@@ -52,15 +85,25 @@ Item {
             id: column
             width: parent.width
 
-            PageHeader { title: qsTr("Schedule") }
+            PageHeader {
+                title: qsTr("Schedule")
+                description: wilmaClient.roleName.length > 0
+                             ? wilmaClient.roleName
+                             : wilmaClient.displayName
+            }
 
             Repeater {
+                id: dayRepeater
                 model: page.days
                 delegate: Column {
+                    property string dayKey: modelData.date
                     width: column.width
 
                     SectionHeader {
                         text: modelData.dateLabel
+                        color: page.highlightDate === modelData.date
+                               ? Theme.highlightColor
+                               : Theme.secondaryHighlightColor
                     }
 
                     Repeater {

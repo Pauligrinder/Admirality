@@ -10,6 +10,7 @@ ApplicationWindow
     property string coverNotificationTitle: ""
     property string coverNotificationBody: ""
     property string pendingOpenView: ""
+    property string pendingScheduleDate: ""
     property int openViewTries: 0
 
     function isAuthedPage(name) {
@@ -46,7 +47,14 @@ ApplicationWindow
             page.showTab(3)
         else if (view === "news" && typeof page.showTab === "function")
             page.showTab(4)
-        else if ((view === "grades" || view === "homework" || view === "exams")
+        else if (view === "schedule" || (view && view.indexOf("schedule:") === 0)) {
+            if (view.indexOf("schedule:") === 0)
+                appWindow.pendingScheduleDate = view.substring(9)
+            else
+                appWindow.pendingScheduleDate = ""
+            if (typeof page.showTab === "function")
+                page.showTab(2)
+        } else if ((view === "grades" || view === "homework" || view === "exams")
                  && typeof page.showHomeSection === "function")
             page.showHomeSection(view)
         else
@@ -60,8 +68,14 @@ ApplicationWindow
         appWindow.pendingOpenView = view || ""
         appWindow.openViewTries = 0
         appWindow.activate()
-        if (!appWindow.pendingOpenView.length || !wilmaClient.loggedIn)
+        if (!appWindow.pendingOpenView.length)
             return
+        // Cold start: splash/login may still be up and bridge login may lag.
+        // Keep pendingOpenView and retry until MainPage can apply it.
+        if (!wilmaClient.loggedIn) {
+            openViewRetry.restart()
+            return
+        }
         var page = pageStack.currentPage
         if (!page || page.objectName !== "MainPage") {
             pageStack.replaceAbove(null, Qt.resolvedUrl("pages/MainPage.qml"))
@@ -114,12 +128,26 @@ ApplicationWindow
         interval: 150
         repeat: false
         onTriggered: {
-            if (!appWindow.pendingOpenView.length || !wilmaClient.loggedIn)
+            if (!appWindow.pendingOpenView.length)
                 return
+            if (!wilmaClient.loggedIn) {
+                if (appWindow.openViewTries < 40) {
+                    appWindow.openViewTries += 1
+                    openViewRetry.restart()
+                }
+                return
+            }
             appWindow.openViewTries += 1
+            var page = pageStack.currentPage
+            if (!page || page.objectName !== "MainPage") {
+                pageStack.replaceAbove(null, Qt.resolvedUrl("pages/MainPage.qml"))
+                if (appWindow.openViewTries < 40)
+                    openViewRetry.restart()
+                return
+            }
             if (appWindow.applyOpenView(appWindow.pendingOpenView))
                 return
-            if (appWindow.openViewTries < 20)
+            if (appWindow.openViewTries < 40)
                 openViewRetry.restart()
         }
     }

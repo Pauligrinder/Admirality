@@ -970,6 +970,8 @@ WilmaClient::WilmaClient(QObject *parent)
     , m_pollMode(QStringLiteral("15min"))
     , m_unreadCount(0)
     , m_pendingRefresh(0)
+    , m_roleProbePending(0)
+    , m_roleScoresChanged(false)
     , m_refreshing(false)
     , m_detailBusy(false)
     , m_freshReady(false)
@@ -1128,10 +1130,18 @@ void WilmaClient::selectSchoolUrl(const QString &raw)
 void WilmaClient::login(const QString &username, const QString &password)
 {
     m_username = username.trimmed();
-    m_password = password;
+    // Never replace a stored password with an empty one — GetState no longer
+    // exposes the password, and the UI used to echo that empty value back via
+    // Login(), wiping credentials on disk.
+    if (!password.isEmpty())
+        m_password = password;
     emit usernameChanged();
     emit passwordChanged();
     emit credentialsChanged();
+    if (m_username.isEmpty() || m_password.isEmpty()) {
+        failLogin(QStringLiteral("Wilma login failed. Check the username and password."));
+        return;
+    }
     saveSettings();
     m_loginTry = 0;
     m_loginInProgress = false;
@@ -1393,15 +1403,25 @@ void WilmaClient::onReplyFinished()
         }
         if (status >= 200 && status < 300) {
             const QJsonObject obj = QJsonDocument::fromJson(body).object();
-            const QString sessionId = jsonString(obj, QStringList()
-                                                 << QStringLiteral("SessionID")
-                                                 << QStringLiteral("SESSIONID")
-                                                 << QStringLiteral("Wilma2LoginID"));
-            const QString sid = !sessionId.isEmpty() ? sessionId : loginCookie();
-            if (!sid.isEmpty()) {
-                postIndexJson(sid);
+            QString sessionId = jsonString(obj, QStringList()
+                                           << QStringLiteral("SessionID")
+                                           << QStringLiteral("SESSIONID")
+                                           << QStringLiteral("Wilma2LoginID"));
+            if (sessionId.isEmpty())
+                sessionId = cookieValueFromReply(reply, QByteArray("Wilma2LoginID"));
+            if (sessionId.isEmpty())
+                sessionId = loginCookie();
+            if (!sessionId.isEmpty()) {
+                postIndexJson(sessionId);
                 return;
             }
+            qWarning() << "Admirality index_json: no SessionID status=" << status
+                       << "bodyLen=" << body.size()
+                       << "error=" << reply->errorString();
+        } else {
+            qWarning() << "Admiralty index_json: bad status=" << status
+                       << "error=" << reply->errorString()
+                       << "bodyLen=" << body.size();
         }
         retryLogin(QStringLiteral("Could not start a Wilma login session"), false);
         break;
@@ -1653,6 +1673,10 @@ void WilmaClient::onReplyFinished()
                         QString::fromUtf8(reply->rawHeader("Content-Type")));
         break;
     }
+    case RequestRoleUnreadProbe: {
+        handleRoleUnreadProbe(reply, body);
+        break;
+    }
     default:
         setBusy(false);
         break;
@@ -1710,7 +1734,9 @@ void WilmaClient::saveSettings()
     settings.setValue(QStringLiteral("schoolUrl"), m_schoolUrl);
     settings.setValue(QStringLiteral("schoolName"), m_schoolName);
     settings.setValue(QStringLiteral("username"), m_username);
-    settings.setValue(QStringLiteral("password"), m_password);
+    // Keep a previously saved password if the in-memory one was cleared.
+    if (!m_password.isEmpty())
+        settings.setValue(QStringLiteral("password"), m_password);
     settings.setValue(QStringLiteral("sessionId"), m_sessionId);
     settings.setValue(QStringLiteral("displayName"), m_displayName);
     settings.setValue(QStringLiteral("roleId"), m_roleId);
@@ -2159,10 +2185,20 @@ void WilmaClient::failLogin(const QString &message)
 {
     m_loginInProgress = false;
     setBusy(false);
+    setStatus(QStringLiteral("Sign-in failed"));
     setError(message);
     emit loginFailed(message);
     if (m_restoring)
         finishRestore(false);
+    // One delayed retry — covers transient Wilma/CDN blips after a daemon restart.
+    if (hasCredentials() && !m_schoolUrl.isEmpty() && m_loginTry >= 2) {
+        QTimer::singleShot(8000, this, [this]() {
+            if (m_loggedIn || m_loginInProgress || !hasCredentials())
+                return;
+            m_loginTry = 0;
+            startLogin();
+        });
+    }
 }
 
 void WilmaClient::continueAfterLoginRedirect(const QUrl &redirectUrl)
@@ -2373,6 +2409,8 @@ bool WilmaClient::usesRolePrefix(RequestKind kind) const
     case RequestMessageItem:
     case RequestAttendance:
         return true;
+    case RequestRoleUnreadProbe:
+        return false;
     default:
         return false;
     }
@@ -2896,7 +2934,110 @@ void WilmaClient::endRefreshIfMarked(QNetworkReply *reply)
                 m_seededCategories.insert(category);
             saveSettings();
         }
+        if (m_loggedIn)
+            startRoleUnreadProbes();
     }
+}
+
+int WilmaClient::currentUnreadStuff() const
+{
+    return m_unreadCount
+            + freshNoteCount()
+            + freshNewsCount()
+            + freshGradeCount()
+            + freshHomeworkCount()
+            + freshExamCount();
+}
+
+int WilmaClient::roleUnreadTotal(const QString &roleId) const
+{
+    return m_roleUnreadScores.value(roleIdFromText(roleId), 0);
+}
+
+void WilmaClient::setRoleScore(const QString &roleId, int score)
+{
+    const QString id = roleIdFromText(roleId);
+    if (id.isEmpty())
+        return;
+    if (m_roleUnreadScores.value(id, -1) == score)
+        return;
+    m_roleUnreadScores.insert(id, score);
+    m_roleScoresChanged = true;
+}
+
+void WilmaClient::startRoleUnreadProbes()
+{
+    if (!m_loggedIn || m_schoolUrl.isEmpty() || m_roles.size() <= 1 || m_roleProbePending > 0)
+        return;
+
+    const int fresh = freshNoteCount() + freshNewsCount() + freshGradeCount()
+            + freshHomeworkCount() + freshExamCount();
+    if (!m_roleId.isEmpty()) {
+        m_roleFreshTotals.insert(m_roleId, fresh);
+        setRoleScore(m_roleId, m_unreadCount + fresh);
+    }
+
+    for (const QVariant &entry : m_roles) {
+        const QString id = roleIdFromText(entry.toMap().value(QStringLiteral("id")).toString());
+        if (id.isEmpty() || id == m_roleId)
+            continue;
+        m_roleProbePending += 1;
+        QNetworkReply *reply = get(QStringLiteral("/!%1/messages/list").arg(id),
+                                   RequestRoleUnreadProbe);
+        reply->setProperty("probeRoleId", id);
+    }
+    if (m_roleProbePending <= 0)
+        maybeAutoSelectHottestRole();
+}
+
+void WilmaClient::handleRoleUnreadProbe(QNetworkReply *reply, const QByteArray &body)
+{
+    if (m_roleProbePending > 0)
+        m_roleProbePending -= 1;
+
+    const QString roleId = roleIdFromText(reply
+                                          ? reply->property("probeRoleId").toString()
+                                          : QString());
+    if (!roleId.isEmpty()) {
+        int unread = 0;
+        const QJsonDocument doc = QJsonDocument::fromJson(body);
+        const QJsonArray messages = extractMessagesArray(doc);
+        for (const QJsonValue &value : messages) {
+            if (messageUnread(value.toObject()))
+                unread += 1;
+        }
+        const int fresh = m_roleFreshTotals.value(roleId, 0);
+        setRoleScore(roleId, unread + fresh);
+    }
+
+    if (m_roleProbePending <= 0) {
+        m_roleProbePending = 0;
+        maybeAutoSelectHottestRole();
+    }
+}
+
+void WilmaClient::maybeAutoSelectHottestRole()
+{
+    if (!m_roleScoresChanged || m_roles.size() <= 1 || !m_loggedIn)
+        return;
+    m_roleScoresChanged = false;
+
+    QString bestId = m_roleId;
+    int bestScore = roleUnreadTotal(m_roleId);
+    for (const QVariant &entry : m_roles) {
+        const QString id = roleIdFromText(entry.toMap().value(QStringLiteral("id")).toString());
+        if (id.isEmpty())
+            continue;
+        const int score = roleUnreadTotal(id);
+        if (score > bestScore) {
+            bestScore = score;
+            bestId = id;
+        }
+    }
+    if (bestScore <= 0 || bestId.isEmpty() || bestId == m_roleId)
+        return;
+    qDebug() << "Admirality auto-select role" << bestId << "score=" << bestScore;
+    selectRole(bestId);
 }
 
 bool WilmaClient::isInvalidSession(int status, const QByteArray &body) const

@@ -1,6 +1,6 @@
 Name:       harbour-admirality
 Summary:    Admirality — Wilma / Inschool.fi for Sailfish OS
-Version:    0.2.3
+Version:    0.2.10
 Release:    1
 License:    ASL 2.0
 URL:        https://github.com/Pauligrinder/Admirality
@@ -73,6 +73,26 @@ fi
 %config %{_sysconfdir}/sailjail/permissions/AdmiralityDBus.permission
 
 %changelog
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.10-1
+- Show the current user in page headers; Change user in the pulley menu.
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.9-1
+- Multi-person switcher on the unread card; auto-select the person with most unread on poll.
+- Week-only schedule card (no day tap); subject boxes with meal icon for Ruokailu.
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.8-1
+- Fix schedule Events widget collapsing after lessons load (flat list + height floor).
+- Cover-blue schedule card with calendar watermark; show schedule above unread.
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.7-1
+- Stop wiping the stored Wilma password when GetState omits it.
+- Cover-blue info card with logo left/above the count buttons; simpler schedule widget.
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.6-1
+- Flat schedule widget; white Wilma watermark in the blue bar; LauncherItem cold start.
+- Quote daemon QT_MESSAGE_PATTERN so login survives service restarts.
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.5-1
+- Size the schedule widget like the stock calendar loader; fix cold-start launch.
+- Wilma logo and brand blue on the unread card; Admirality settings titles.
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.4-1
+- Flatten the schedule Events widget so lipstick can size it like Helmsman.
+- Run the Wilma daemon with a headless Qt platform; stop exposing the password on D-Bus.
 * Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.3-1
 - Load the schedule widget through a weather-style height-keeping Loader.
 - Show press feedback on Wilma info icons and raise the app from lipstick.

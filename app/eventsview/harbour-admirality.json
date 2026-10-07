@@ -2,22 +2,22 @@
     "translation_catalog": "harbour-admirality",
     "widgets": [
         {
-            "title": "Schedule",
-            "description_id": "harbour-admirality-schedule-widget_description",
-            "icon": "/usr/share/icons/hicolor/86x86/apps/harbour-admirality.png",
-            "order": 4,
-            "path": "/usr/share/harbour-admirality/eventsview/ScheduleWidget.qml",
-            "default_enabled": true,
-            "available_path": "/usr/share/harbour-admirality/eventsview/ScheduleWidget.qml"
-        },
-        {
-            "title": "Wilma",
+            "title": "Admirality - Unread",
             "description_id": "harbour-admirality-info-widget_description",
             "icon": "/usr/share/icons/hicolor/86x86/apps/harbour-admirality.png",
-            "order": 5,
+            "order": 4,
             "path": "/usr/share/harbour-admirality/eventsview/InfoWidget.qml",
             "default_enabled": true,
             "available_path": "/usr/share/harbour-admirality/eventsview/InfoWidget.qml"
+        },
+        {
+            "title": "Admirality - Schedule",
+            "description_id": "harbour-admirality-schedule-widget_description",
+            "icon": "/usr/share/icons/hicolor/86x86/apps/harbour-admirality.png",
+            "order": 5,
+            "path": "/usr/share/harbour-admirality/eventsview/ScheduleWidget.qml",
+            "default_enabled": true,
+            "available_path": "/usr/share/harbour-admirality/eventsview/ScheduleWidget.qml"
         }
     ]
 }

@@ -62,6 +62,10 @@ class WilmaService : public QObject
 "    <method name=\"AcknowledgeGrades\"/>\n"
 "    <method name=\"AcknowledgeHomework\"/>\n"
 "    <method name=\"AcknowledgeExams\"/>\n"
+"    <method name=\"OpenView\">\n"
+"      <arg direction=\"in\" type=\"s\" name=\"view\"/>\n"
+"    </method>\n"
+"    <method name=\"ClearOpenView\"/>\n"
 "    <signal name=\"StateChanged\"/>\n"
 "  </interface>\n"
 "")
@@ -90,6 +94,8 @@ public slots:
     Q_SCRIPTABLE void AcknowledgeGrades();
     Q_SCRIPTABLE void AcknowledgeHomework();
     Q_SCRIPTABLE void AcknowledgeExams();
+    Q_SCRIPTABLE void OpenView(const QString &view);
+    Q_SCRIPTABLE void ClearOpenView();
 
 signals:
     Q_SCRIPTABLE void StateChanged();
@@ -111,7 +117,9 @@ private:
     int m_loginFailedEpoch;
     int m_restoreEpoch;
     int m_notificationEpoch;
+    int m_openViewEpoch;
     bool m_restoreOk;
+    QString m_openView;
     QString m_loginFailedMessage;
     QString m_notificationTitle;
     QString m_notificationBody;

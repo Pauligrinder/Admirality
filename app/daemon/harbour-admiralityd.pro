@@ -4,7 +4,7 @@ QT = core network dbus
 CONFIG += c++11 console link_pkgconfig
 CONFIG -= app_bundle
 
-VERSION = 0.2.0
+VERSION = 0.2.1
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 INCLUDEPATH += ../src

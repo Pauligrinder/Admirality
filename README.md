@@ -23,8 +23,9 @@ and [OpenWilma](https://github.com/OpenWilma/openwilma.js):
 The app and the Events view widgets both read that service over the
 session bus. Schedule shows the current day, with arrows and a week
 timetable; after the school week has ended the week view opens on next
-week. The info card shows icon counts only. Opening a message marks it
-read immediately. Lesson notes use a green, red, or grey dot.
+week. The Wilma info card shows icon counts; tapping one opens that
+part of the app. Opening a message marks it read immediately. Lesson
+notes use a green, red, or grey dot.
 
 Credentials stay in the app's local settings so the session can be restored.
 
@@ -62,9 +63,9 @@ chmod +x build.sh
 Install on the phone:
 
 ```sh
-scp app/RPMS/harbour-admirality-0.2.0-1.aarch64.rpm defaultuser@<phone-ip>:~/
+scp app/RPMS/harbour-admirality-0.2.1-1.aarch64.rpm defaultuser@<phone-ip>:~/
 ssh defaultuser@<phone-ip>
-devel-su pkcon install-local ~/harbour-admirality-0.2.0-1.aarch64.rpm
+devel-su pkcon install-local ~/harbour-admirality-0.2.1-1.aarch64.rpm
 ```
 
 Sailjail permissions used: `Internet`, `Notifications`, `AdmiralityDBus`.

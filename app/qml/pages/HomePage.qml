@@ -51,6 +51,22 @@ Item {
             pageStack.push(Qt.resolvedUrl("NotesPage.qml"))
     }
 
+    function reveal(which) {
+        var target = null
+        if (which === "exams")
+            target = examsHeader
+        else if (which === "homework")
+            target = homeworkHeader
+        else if (which === "grades")
+            target = gradesHeader
+        if (!target)
+            return
+        Qt.callLater(function() {
+            var maxY = Math.max(0, flick.contentHeight - flick.height)
+            flick.contentY = Math.max(0, Math.min(target.y, maxY))
+        })
+    }
+
     function openWilmaSite() {
         pageStack.push(Qt.resolvedUrl("WilmaPage.qml"))
     }
@@ -79,6 +95,7 @@ Item {
     }
 
     SilicaFlickable {
+        id: flick
         anchors.fill: parent
         contentHeight: column.height + Theme.paddingLarge
 
@@ -463,7 +480,10 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Exams") }
+            SectionHeader {
+                id: examsHeader
+                text: qsTr("Exams")
+            }
 
             Repeater {
                 model: page.preview(wilmaClient.exams, 6)
@@ -519,7 +539,10 @@ Item {
                 text: qsTr("No upcoming exams")
             }
 
-            SectionHeader { text: qsTr("Homework") }
+            SectionHeader {
+                id: homeworkHeader
+                text: qsTr("Homework")
+            }
 
             Repeater {
                 model: page.preview(wilmaClient.homework, 6)
@@ -575,6 +598,7 @@ Item {
             }
 
             SectionHeader {
+                id: gradesHeader
                 visible: wilmaClient.grades.length > 0
                 text: qsTr("Recent grades")
             }

@@ -90,6 +90,7 @@ WilmaBridge::WilmaBridge(QObject *parent)
     , m_loginFailedEpoch(0)
     , m_restoreEpoch(0)
     , m_notificationEpoch(0)
+    , m_openViewEpoch(0)
     , m_messageFolder(QStringLiteral("inbox"))
     , m_pollMode(QStringLiteral("15min"))
 {
@@ -244,6 +245,7 @@ void WilmaBridge::acknowledgeNews() { invoke(QStringLiteral("AcknowledgeNews"));
 void WilmaBridge::acknowledgeGrades() { invoke(QStringLiteral("AcknowledgeGrades")); }
 void WilmaBridge::acknowledgeHomework() { invoke(QStringLiteral("AcknowledgeHomework")); }
 void WilmaBridge::acknowledgeExams() { invoke(QStringLiteral("AcknowledgeExams")); }
+void WilmaBridge::clearOpenView() { invoke(QStringLiteral("ClearOpenView")); }
 
 void WilmaBridge::setServiceReady(bool ready)
 {
@@ -440,6 +442,14 @@ void WilmaBridge::applyState(const QString &json)
     const int failedEpoch = root.value(QStringLiteral("loginFailedEpoch")).toInt();
     const int restoreEpoch = root.value(QStringLiteral("restoreEpoch")).toInt();
     const int notificationEpoch = root.value(QStringLiteral("notificationEpoch")).toInt();
+    const int openEpoch = root.value(QStringLiteral("openViewEpoch")).toInt();
+    const QString openView = root.value(QStringLiteral("openView")).toString();
+    if (openEpoch > m_openViewEpoch && !openView.isEmpty()) {
+        m_openViewEpoch = openEpoch;
+        emit openViewRequested(openView);
+    } else if (openEpoch > m_openViewEpoch) {
+        m_openViewEpoch = openEpoch;
+    }
     if (!m_haveEpochs) {
         m_loginSucceededEpoch = loginEpoch;
         m_otpEpoch = otpEpoch;

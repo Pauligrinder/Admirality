@@ -1,6 +1,6 @@
 Name:       harbour-admirality
 Summary:    Admirality — Wilma / Inschool.fi for Sailfish OS
-Version:    0.2.0
+Version:    0.2.1
 Release:    1
 License:    ASL 2.0
 URL:        https://github.com/Pauligrinder/Admirality
@@ -73,6 +73,9 @@ fi
 %config %{_sysconfdir}/sailjail/permissions/AdmiralityDBus.permission
 
 %changelog
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.1-1
+- Keep the schedule Events view widget from collapsing to zero height.
+- Add a Wilma heading on the info card and open the matching page on tap.
 * Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.0-1
 - Load Wilma in a background service the app and Events View widgets share.
 - School timetable and a counts card on the Events view.

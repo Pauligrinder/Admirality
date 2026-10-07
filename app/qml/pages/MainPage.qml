@@ -14,6 +14,12 @@ Page {
         page.currentTab = index
     }
 
+    function showHomeSection(which) {
+        page.currentTab = 0
+        if (tabLoader.item && typeof tabLoader.item.reveal === "function")
+            tabLoader.item.reveal(which)
+    }
+
     function reloadWilma() {
         wilmaClient.refreshHome()
     }

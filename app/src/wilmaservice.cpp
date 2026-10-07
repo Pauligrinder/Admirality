@@ -3,6 +3,7 @@
 #include "wilmaclient.h"
 
 #include <QDBusConnection>
+#include <QDBusMessage>
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>

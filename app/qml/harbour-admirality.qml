@@ -1,6 +1,5 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
-import Nemo.Notifications 1.0
 import "cover" as CoverDir
 import "pages"
 
@@ -11,10 +10,24 @@ ApplicationWindow
     property string coverNotificationTitle: ""
     property string coverNotificationBody: ""
 
+    function isAuthedPage(name) {
+        return name === "MainPage"
+                || name === "HomePage"
+                || name === "WilmaPage"
+                || name === "MessagesPage"
+                || name === "MessagePage"
+                || name === "NewsPage"
+                || name === "NewsDetailPage"
+                || name === "SchedulePage"
+                || name === "NotesPage"
+                || name === "SettingsPage"
+    }
+
     function goHome() {
-        if (pageStack.currentPage && pageStack.currentPage.objectName === "WilmaPage")
+        var name = pageStack.currentPage ? pageStack.currentPage.objectName : ""
+        if (name === "MainPage" || name === "HomePage" || appWindow.isAuthedPage(name))
             return
-        pageStack.replaceAbove(null, Qt.resolvedUrl("pages/WilmaPage.qml"))
+        pageStack.replaceAbove(null, Qt.resolvedUrl("pages/MainPage.qml"))
     }
 
     function goLogin() {
@@ -29,30 +42,11 @@ ApplicationWindow
     }
 
     function showWilmaNotification(title, message) {
-        var n = notificationComponent.createObject(appWindow)
-        if (!n)
-            return
         var summary = title && title.length > 0 ? title : qsTr("Wilma")
         var body = message || ""
-        n.appName = "Admirality"
-        n.appIcon = "harbour-admirality"
-        n.summary = summary
-        n.body = body
-        n.previewSummary = summary
-        n.previewBody = body
-        n.clicked.connect(function() { appWindow.activate() })
-        try {
-            n.publish()
-        } catch (e) {
-        }
         appWindow.notificationCount += 1
         appWindow.coverNotificationTitle = summary
         appWindow.coverNotificationBody = body
-    }
-
-    Component {
-        id: notificationComponent
-        Notification { }
     }
 
     Connections {
@@ -68,7 +62,7 @@ ApplicationWindow
         onLoggedInChanged: {
             if (!wilmaClient.loggedIn
                     && pageStack.currentPage
-                    && pageStack.currentPage.objectName === "WilmaPage")
+                    && appWindow.isAuthedPage(pageStack.currentPage.objectName))
                 appWindow.goLogin()
         }
         onNotificationReceived: appWindow.showWilmaNotification(title, message)
@@ -79,8 +73,8 @@ ApplicationWindow
             appWindow.notificationCount = 0
             appWindow.coverNotificationTitle = ""
             appWindow.coverNotificationBody = ""
-            if (wilmaClient.loggedIn)
-                wilmaClient.pollMessages()
+            if (wilmaClient.loggedIn && wilmaClient.roleId.length > 0)
+                wilmaClient.refreshHome()
         }
     }
 
@@ -100,10 +94,10 @@ ApplicationWindow
                                  || appWindow.coverNotificationBody.length > 0)
         onRequestSettings: appWindow.openSettings()
         onRequestReload: {
-            if (wilmaClient.loggedIn)
-                wilmaClient.pollMessages()
+            if (wilmaClient.loggedIn && wilmaClient.roleId.length > 0)
+                wilmaClient.refreshHome()
             var page = pageStack.currentPage
-            if (page && typeof page.reloadWilma === "function")
+            if (page && page.objectName === "WilmaPage" && typeof page.reloadWilma === "function")
                 page.reloadWilma()
             appWindow.activate()
         }

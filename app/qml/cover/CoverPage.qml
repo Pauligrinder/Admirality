@@ -23,16 +23,16 @@ CoverBackground {
     }
 
     Item {
-        id: anchorWatermark
+        id: capWatermark
         anchors.centerIn: parent
-        width: parent.width * 1.55
+        width: parent.width * 1.35
         height: width
         opacity: 0.22
-        rotation: -28
+        rotation: -18
         z: 0
 
         Canvas {
-            id: anchorCanvas
+            id: capCanvas
             anchors.fill: parent
             antialiasing: true
 
@@ -47,41 +47,58 @@ CoverBackground {
                 ctx.lineJoin = "round"
 
                 var cx = w * 0.5
-                var cy = h * 0.52
-                var s = Math.min(w, h) * 0.28
+                var cy = h * 0.46
+                var s = Math.min(w, h) * 0.30
 
-                ctx.lineWidth = Math.max(6, s * 0.18)
+                // Skull / band
                 ctx.beginPath()
-                ctx.arc(cx, cy - s * 1.15, s * 0.22, 0, Math.PI * 2)
-                ctx.stroke()
+                ctx.ellipse(cx - s * 0.42, cy + s * 0.18, s * 0.84, s * 0.54)
+                ctx.fill()
 
+                // Mortarboard diamond
                 ctx.beginPath()
-                ctx.moveTo(cx - s * 0.72, cy - s * 0.72)
-                ctx.lineTo(cx + s * 0.72, cy - s * 0.72)
-                ctx.stroke()
-
-                ctx.beginPath()
-                ctx.moveTo(cx, cy - s * 0.93)
-                ctx.lineTo(cx, cy + s * 0.78)
-                ctx.stroke()
-
-                ctx.beginPath()
-                ctx.arc(cx, cy + s * 0.22, s * 0.95, Math.PI * 0.12, Math.PI * 0.88)
-                ctx.stroke()
-
-                ctx.beginPath()
-                ctx.moveTo(cx - s * 0.95, cy + s * 0.38)
-                ctx.lineTo(cx - s * 0.72, cy + s * 0.08)
-                ctx.lineTo(cx - s * 0.55, cy + s * 0.42)
+                ctx.moveTo(cx, cy - s * 0.50)
+                ctx.lineTo(cx + s * 1.08, cy + s * 0.08)
+                ctx.lineTo(cx, cy + s * 0.58)
+                ctx.lineTo(cx - s * 1.08, cy + s * 0.08)
                 ctx.closePath()
                 ctx.fill()
 
+                // Center button
+                var br = Math.max(4, s * 0.11)
                 ctx.beginPath()
-                ctx.moveTo(cx + s * 0.95, cy + s * 0.38)
-                ctx.lineTo(cx + s * 0.72, cy + s * 0.08)
-                ctx.lineTo(cx + s * 0.55, cy + s * 0.42)
-                ctx.closePath()
+                ctx.arc(cx, cy - br * 0.15, br, 0, Math.PI * 2)
                 ctx.fill()
+
+                // Tassel cord
+                ctx.lineWidth = Math.max(4, s * 0.11)
+                ctx.beginPath()
+                ctx.moveTo(cx + br * 0.4, cy + br * 0.6)
+                ctx.quadraticCurveTo(
+                            cx + s * 0.55, cy + s * 0.55,
+                            cx + s * 0.78, cy + s * 1.05)
+                ctx.stroke()
+
+                // Tassel knot
+                var tbx = cx + s * 0.78
+                var tby = cy + s * 1.05
+                var tw = s * 0.26
+                var th = s * 0.24
+                ctx.beginPath()
+                ctx.ellipse(tbx - tw * 0.5, tby - th * 0.35, tw, th)
+                ctx.fill()
+
+                // Fringe
+                ctx.lineWidth = Math.max(3, s * 0.08)
+                var fringe = [
+                            [-0.11, 0.38], [-0.04, 0.44], [0.04, 0.44], [0.11, 0.38]
+                        ]
+                for (var i = 0; i < fringe.length; i++) {
+                    ctx.beginPath()
+                    ctx.moveTo(tbx + fringe[i][0] * s * 0.5, tby + s * 0.10)
+                    ctx.lineTo(tbx + fringe[i][0] * s, tby + fringe[i][1] * s)
+                    ctx.stroke()
+                }
             }
 
             Component.onCompleted: requestPaint()

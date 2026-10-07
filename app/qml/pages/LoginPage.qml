@@ -6,8 +6,38 @@ Page {
     objectName: "LoginPage"
     allowedOrientations: Orientation.All
 
+    property bool autoSubmitted: false
+
     function submit() {
-        wilmaClient.login(usernameField.text, passwordField.text)
+        var user = usernameField.text.length > 0 ? usernameField.text : wilmaClient.username
+        var pass = passwordField.text.length > 0 ? passwordField.text : wilmaClient.password
+        wilmaClient.login(user, pass)
+    }
+
+    function tryAutoLogin() {
+        if (page.autoSubmitted || wilmaClient.busy || wilmaClient.loggedIn
+                || wilmaClient.restoringSession)
+            return
+        if (!wilmaClient.hasCredentials)
+            return
+        page.autoSubmitted = true
+        // Use stored credentials directly — PasswordField may not echo saved text.
+        wilmaClient.login(wilmaClient.username, wilmaClient.password)
+    }
+
+    Connections {
+        target: wilmaClient
+        onLoginSucceeded: pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
+        onOtpRequired: pageStack.replaceAbove(null, Qt.resolvedUrl("OtpPage.qml"))
+    }
+
+    Component.onCompleted: autoLoginTimer.start()
+
+    Timer {
+        id: autoLoginTimer
+        interval: 50
+        repeat: false
+        onTriggered: page.tryAutoLogin()
     }
 
     SilicaFlickable {

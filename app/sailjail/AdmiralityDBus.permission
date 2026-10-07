@@ -1,0 +1,8 @@
+# -*- mode: sh -*-
+
+# x-sailjail-description = Admirality service
+# x-sailjail-long-description = Read Wilma data from the Admirality background service
+
+dbus-user.talk org.admirality.harbour-admirality
+dbus-user.call org.admirality.harbour-admirality=org.admirality.Wilma.*@/*
+dbus-user.broadcast org.admirality.harbour-admirality=org.admirality.Wilma.*@/*

@@ -1,0 +1,12 @@
+[Unit]
+Description=Admirality Wilma data loader
+After=pre-user-session.target lipstick.service
+Requires=dbus.socket
+
+[Service]
+ExecStart=/usr/bin/harbour-admiralityd
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=user-session.target

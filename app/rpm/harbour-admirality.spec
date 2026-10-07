@@ -1,6 +1,6 @@
 Name:       harbour-admirality
 Summary:    Admirality — Wilma / Inschool.fi for Sailfish OS
-Version:    0.2.2
+Version:    0.2.3
 Release:    1
 License:    ASL 2.0
 URL:        https://github.com/Pauligrinder/Admirality
@@ -73,6 +73,9 @@ fi
 %config %{_sysconfdir}/sailjail/permissions/AdmiralityDBus.permission
 
 %changelog
+* Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.3-1
+- Load the schedule widget through a weather-style height-keeping Loader.
+- Show press feedback on Wilma info icons and raise the app from lipstick.
 * Wed Oct 07 2026 Pauli Kettunen <pauli.kettunen@sarkain.fi> - 0.2.2-1
 - Launch the UI from the daemon when an Events view icon is tapped.
 - Restart the Wilma service on upgrade so new D-Bus methods are live.

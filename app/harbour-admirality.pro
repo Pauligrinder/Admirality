@@ -4,7 +4,7 @@ CONFIG += sailfishapp
 QT += gui network dbus
 PKGCONFIG += qt5embedwidget
 
-VERSION = 0.2.2
+VERSION = 0.2.3
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 SOURCES += \
@@ -37,7 +37,9 @@ icon128.path = /usr/share/icons/hicolor/128x128/apps
 icon172.files = icons/172x172/harbour-admirality.png
 icon172.path = /usr/share/icons/hicolor/172x172/apps
 
-eventsWidgetQml.files = eventsview/ScheduleWidget.qml eventsview/InfoWidget.qml
+eventsWidgetQml.files = eventsview/ScheduleWidget.qml \
+                        eventsview/ScheduleContent.qml \
+                        eventsview/InfoWidget.qml
 eventsWidgetQml.path = /usr/share/harbour-admirality/eventsview
 
 eventsWidgetJson.files = eventsview/harbour-admirality.json

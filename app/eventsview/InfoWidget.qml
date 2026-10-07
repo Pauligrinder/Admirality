@@ -1,6 +1,7 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
 import Nemo.DBus 2.0
+import org.nemomobile.lipstick 0.1
 
 Item {
     id: root
@@ -28,9 +29,45 @@ Item {
         { "icon": "image://theme/icon-m-calendar", "count": root.exams, "view": "exams" }
     ]
 
+    function findApp(model, depth) {
+        if (!model || depth > 4 || typeof model.get !== "function")
+            return null
+        var n = model.count || 0
+        for (var i = 0; i < n; ++i) {
+            var item = model.get(i)
+            if (!item)
+                continue
+            var path = String(item.filePath || item.exec || "")
+            if (path.indexOf("harbour-admirality") >= 0)
+                return item
+            if (String(item.title || "") === "Admirality")
+                return item
+            if (item.type === LauncherModel.Folder) {
+                var nested = root.findApp(item, depth + 1)
+                if (!nested && item.model)
+                    nested = root.findApp(item.model, depth + 1)
+                if (nested)
+                    return nested
+            }
+        }
+        return null
+    }
+
+    function launchApp() {
+        // Runs inside lipstick — launchApplication raises or starts immediately.
+        var item = root.findApp(launcherModel, 0)
+        if (item) {
+            item.launchApplication()
+            return true
+        }
+        return false
+    }
+
     function openCount(view) {
-        // Daemon stores the target page and starts/raises the UI.
+        // Tell the daemon which page to open, then raise the UI from lipstick
+        // so the tap feels instant (invoker alone is slow on a cold start).
         wilma.call("OpenView", [view])
+        root.launchApp()
     }
 
     function applyPayload(payload) {
@@ -77,6 +114,10 @@ Item {
         onTriggered: root.fetchState()
     }
 
+    LauncherModel {
+        id: launcherModel
+    }
+
     DBusInterface {
         id: wilma
         service: "org.admirality.harbour-admirality"
@@ -106,7 +147,7 @@ Item {
         Item {
             x: Theme.horizontalPageMargin
             width: parent.width - 2 * x
-            height: Theme.iconSizeSmall + Theme.paddingMedium * 2
+            height: Theme.iconSizeMedium + Theme.paddingMedium * 2
 
             Rectangle {
                 anchors.fill: parent
@@ -119,12 +160,12 @@ Item {
                 id: row
                 anchors.centerIn: parent
                 width: parent.width - Theme.paddingSmall * 2
-                height: Theme.iconSizeSmall
+                height: Theme.iconSizeMedium
                 spacing: 0
 
                 Repeater {
                     model: root.counts
-                    delegate: MouseArea {
+                    delegate: BackgroundItem {
                         width: Math.floor(row.width / root.counts.length)
                         height: row.height
                         onClicked: root.openCount(modelData.view)
@@ -137,7 +178,8 @@ Item {
                             sourceSize.width: width
                             sourceSize.height: height
                             source: modelData.icon
-                            opacity: modelData.count > 0 ? 1 : 0.45
+                            opacity: parent.highlighted ? 0.45
+                                     : (modelData.count > 0 ? 1 : 0.45)
                         }
 
                         Label {
@@ -147,7 +189,9 @@ Item {
                             anchors.bottomMargin: -Theme.paddingSmall
                             font.pixelSize: Theme.fontSizeExtraSmall
                             font.bold: modelData.count > 0
-                            color: modelData.count > 0 ? Theme.highlightColor : Theme.secondaryColor
+                            color: parent.highlighted ? Theme.highlightColor
+                                   : (modelData.count > 0 ? Theme.highlightColor
+                                                          : Theme.secondaryColor)
                             text: modelData.count
                         }
                     }
